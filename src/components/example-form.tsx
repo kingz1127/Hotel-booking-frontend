@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 
 import { userRegister } from "../services/api.Register.js";
-
 import { loginUser } from "../services/api.Login.js";
 import { toast } from "react-toastify";
 
@@ -226,7 +225,7 @@ export function RegisterForm() {
         />
 
         <Button
-          className="rounded-full bg-blue-500 w-2xs h-8 text-white flex items-center hover:bg-green-400"
+          className="rounded-full bg-blue-500 w-3xs h-8 text-white hover:bg-green-400 mx-auto block"
           type="submit"
           disabled={isLoading}
         >
@@ -335,7 +334,7 @@ export function LoginForm() {
         />
 
         <Button
-          className="  rounded-full bg-blue-500 flex justify-center mt-4 h-8 text-white hover:bg-green-400"
+          className="rounded-full bg-blue-500 w-2xs h-8 text-white hover:bg-green-400 mx-auto block"
           type="submit"
           disabled={isLoading}
         >
