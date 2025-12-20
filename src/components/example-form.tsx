@@ -279,7 +279,7 @@ export function LoginForm() {
 
         form.reset();
         toast.success("Login Successful");
-        navigate("/admin/dashboard");
+        navigate("/customerpage/customerdashboard");
       } else {
         toast.error("Login failed: No response from server");
       }
