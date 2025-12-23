@@ -1,10 +1,16 @@
 import { Outlet } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
+import TopNavbar from "@/components/TopNavbar";
+
 
 export default function CustomerPage(){
     return<>
 
-    <div>
+    <div className="flex flex-col ">
+
+        <div>
+        <TopNavbar />
+        </div>
 
         <div>
             <CustomerSidebar />

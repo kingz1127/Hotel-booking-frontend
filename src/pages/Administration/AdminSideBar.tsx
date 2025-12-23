@@ -58,24 +58,32 @@ export default function AdminSideBar() {
         </div>
       </div>
 
-      {/* Navigation Links */}
+      {/* Navigation Links - CHANGED TO ABSOLUTE PATHS */}
       <nav className="flex-1 p-4 space-y-1">
+        {/* Changed from: to="dashboard" to to="/admin/dashboard" */}
         <NavLink
-          to="dashboard"
-          className={({ isActive }) =>
-            `flex items-center gap-3 p-3 rounded-lg transition-colors ${
-              isActive 
-                ? "bg-[#c1bd3f] text-white font-semibold" 
-                : "hover:bg-gray-800"
-            }`
-          }
-        >
-          <Home className="h-5 w-5" />
-          Dashboard
-        </NavLink>
+  to="/admin/dashboard"
+  onClick={(e) => {
+    console.log("=== DASHBOARD NAVLINK CLICKED ===");
+    console.log("Event:", e);
+    console.log("Navigating to: /admin/dashboard");
+    console.log("Current URL:", window.location.href);
+  }}
+  className={({ isActive }) =>
+    `flex items-center gap-3 p-3 rounded-lg transition-colors ${
+      isActive 
+        ? "bg-[#c1bd3f] text-white font-semibold" 
+        : "hover:bg-gray-800"
+    }`
+  }
+>
+  <Home className="h-5 w-5" />
+  Dashboard
+</NavLink>
 
+        {/* Changed from: to="customers" to to="/admin/customers" */}
         <NavLink
-          to="customers"
+          to="/admin/customers"
           className={({ isActive }) =>
             `flex items-center gap-3 p-3 rounded-lg transition-colors ${
               isActive 
@@ -88,8 +96,9 @@ export default function AdminSideBar() {
           Customers
         </NavLink>
 
+        {/* Changed from: to="rooms" to to="/admin/rooms" */}
         <NavLink
-          to="rooms"
+          to="/admin/rooms"
           className={({ isActive }) =>
             `flex items-center gap-3 p-3 rounded-lg transition-colors ${
               isActive 
@@ -102,8 +111,9 @@ export default function AdminSideBar() {
           Rooms Management
         </NavLink>
 
+        {/* Changed from: to="staffs" to to="/admin/staffs" */}
         <NavLink
-          to="staffs"
+          to="/admin/staffs"
           className={({ isActive }) =>
             `flex items-center gap-3 p-3 rounded-lg transition-colors ${
               isActive 
@@ -116,8 +126,9 @@ export default function AdminSideBar() {
           Staff Management
         </NavLink>
 
+        {/* Changed from: to="reports" to to="/admin/reports" */}
         <NavLink
-          to="reports"
+          to="/admin/reports"
           className={({ isActive }) =>
             `flex items-center gap-3 p-3 rounded-lg transition-colors ${
               isActive 
@@ -130,8 +141,9 @@ export default function AdminSideBar() {
           Reports & Analytics
         </NavLink>
 
+        {/* Changed from: to="settings" to to="/admin/settings" */}
         <NavLink
-          to="settings"
+          to="/admin/settings"
           className={({ isActive }) =>
             `flex items-center gap-3 p-3 rounded-lg transition-colors ${
               isActive 

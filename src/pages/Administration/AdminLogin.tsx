@@ -61,55 +61,78 @@ export default function AdminLogin() {
   };
 
   // Handle form submission
-  const handleSubmit = async (data: { email: string; code: string }) => {
-    setLoading(true);
-    setErrorMessage("");
+const handleSubmit = async (data: { email: string; code: string }) => {
+  setLoading(true);
+  setErrorMessage("");
+  
+  try {
+    const result = await verifyAdminCode({
+      email: data.email,
+      code: data.code
+    });
     
-    try {
-      const result = await verifyAdminCode({
-        email: data.email,
-        code: data.code
-      });
-      
-      const token = result.token || result.data?.token;
-      
-      if (!token) {
-        throw new Error("No authentication token received");
-      }
-      
-      // Save admin data with token
-      const adminWithToken = {
-        ...(result.admin || result.data?.admin || {
-          email: data.email,
-          role: "admin",
-          id: result.id || `admin_${Date.now()}`
-        }),
-        token: token
-      };
-      
-      localStorage.setItem("admin", JSON.stringify(adminWithToken));
-      
-      toast.success("Login successful! Redirecting...");
-      navigate("/admin/dashboard");
-      
-    } catch (error: any) {
-      const errorMsg = error.message || "Invalid verification code";
-      setErrorMessage(errorMsg);
-      
-      if (errorMsg.includes("expired")) {
-        toast.error("Code has expired. Click 'Send Code' for a fresh one.");
-      } else if (errorMsg.includes("invalid") || errorMsg.includes("incorrect")) {
-        toast.error("Invalid code. Please check and try again.");
-      } else if (errorMsg.includes("not found") || errorMsg.includes("not registered")) {
-        toast.error("Email not registered. Contact super admin.");
-      } else {
-        toast.error(errorMsg);
-      }
-    } finally {
-      setLoading(false);
+    console.log("Login result:", result);
+    
+    // Extract token
+    const token = result.token || result.data?.token;
+    
+    if (!token) {
+      throw new Error("No authentication token received");
     }
-  };
-
+    
+    console.log("Token received:", token);
+    
+    // CRITICAL: Save admin data in the EXACT format ProtectedRoute expects
+    // ProtectedRoute expects: { token: "some-token", ...otherProps }
+    const adminData = {
+      token: token, // MUST have token property
+      id: result.id,
+      email: result.email,
+      username: result.username,
+      fullName: result.fullName,
+      phoneNumber: result.phoneNumber,
+      role: result.role || "ADMIN",
+      active: result.active,
+      emailVerified: result.emailVerified,
+      createdAt: result.createdAt,
+      lastLoginAt: result.lastLoginAt,
+      // Add session timestamp for expiration tracking
+      sessionStart: Date.now()
+    };
+    
+    console.log("Saving admin data to sessionStorage:", adminData);
+    
+    // Save ONLY to sessionStorage (clears when browser tab closes)
+    sessionStorage.setItem("admin", JSON.stringify(adminData));
+    
+    // Save token separately in sessionStorage for API calls
+    sessionStorage.setItem("adminToken", token);
+    
+    toast.success("Login successful! Redirecting...");
+    
+    // Force navigation with replace
+    setTimeout(() => {
+      navigate("/admin/dashboard", { replace: true });
+    }, 50);
+    
+  } catch (error: any) {
+    console.error("Login error:", error);
+    const errorMsg = error.message || "Invalid verification code";
+    setErrorMessage(errorMsg);
+    
+    if (errorMsg.includes("expired")) {
+      toast.error("Code has expired. Click 'Send Code' for a fresh one.");
+    } else if (errorMsg.includes("invalid") || errorMsg.includes("incorrect")) {
+      toast.error("Invalid code. Please check and try again.");
+    } else if (errorMsg.includes("not found") || errorMsg.includes("not registered")) {
+      toast.error("Email not registered. Contact super admin.");
+    } else {
+      toast.error(errorMsg);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
