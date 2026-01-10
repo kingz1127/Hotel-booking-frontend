@@ -1,8 +1,12 @@
 // pages/Customers/CustomerBookings.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getBookingsByUserId, cancelBooking } from "../../services/api.Booking.js";
+import {
+  getBookingsByUserId,
+  cancelBooking,
+} from "../../services/api.Booking.js";
 import { toast } from "react-toastify";
+import { MessageSquare } from "lucide-react";
 
 export default function CustomerBooking() {
   const [bookings, setBookings] = useState([]);
@@ -14,84 +18,46 @@ export default function CustomerBooking() {
     fetchBookings();
   }, []);
 
-  // const fetchBookings = async () => {
-  //   // Get userId from sessionStorage
-  //   const userSession = sessionStorage.getItem("user");
-  //   let userId = null;
-    
-  //   if (userSession) {
-  //     try {
-  //       const userData = JSON.parse(userSession);
-  //       userId = userData.id || userData.userId;
-  //     } catch (error) {
-  //       console.error("Error parsing user session:", error);
-  //     }
-  //   }
-    
-  //   // Alternative: check if userId is stored separately
-  //   if (!userId) {
-  //     userId = sessionStorage.getItem("userId");
-  //   }
-    
-  //   if (!userId) {
-  //     toast.error("Please login to view bookings");
-  //     navigate("/login");
-  //     return;
-  //   }
-
-  //   try {
-  //     setLoading(true);
-  //     const data = await getBookingsByUserId(parseInt(userId));
-  //     setBookings(data || []);
-  //   } catch (error) {
-  //     toast.error("Failed to load bookings");
-  //     console.error("Error fetching bookings:", error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const fetchBookings = async () => {
-  // UNIVERSAL user ID extraction
-  let userId = null;
-  
-  // Check ALL possible locations
-  const customerSession = sessionStorage.getItem("customer");
-  if (customerSession) {
-    try {
-      const customerData = JSON.parse(customerSession);
-      userId = customerData.id || customerData.userId || customerData.customerId;
-    } catch (error) {
-      console.error("Error parsing customer session:", error);
-    }
-  }
-  
-  // Check individual keys
-  if (!userId) {
-    userId = sessionStorage.getItem("customerId") || 
-             sessionStorage.getItem("userId");
-  }
-  
-  console.log("CustomerBookings: Found userId:", userId);
-  
-  if (!userId) {
-    console.error("No user ID found in sessionStorage");
-    toast.error("Please login to view bookings");
-    navigate("/login");
-    return;
-  }
+    let userId = null;
 
-  try {
-    setLoading(true);
-    const data = await getBookingsByUserId(parseInt(userId));
-    setBookings(data || []);
-  } catch (error) {
-    toast.error("Failed to load bookings");
-    console.error("Error fetching bookings:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+    const customerSession = sessionStorage.getItem("customer");
+    if (customerSession) {
+      try {
+        const customerData = JSON.parse(customerSession);
+        userId =
+          customerData.id || customerData.userId || customerData.customerId;
+      } catch (error) {
+        console.error("Error parsing customer session:", error);
+      }
+    }
+
+    if (!userId) {
+      userId =
+        sessionStorage.getItem("customerId") ||
+        sessionStorage.getItem("userId");
+    }
+
+    console.log("CustomerBookings: Found userId:", userId);
+
+    if (!userId) {
+      console.error("No user ID found in sessionStorage");
+      toast.error("Please login to view bookings");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await getBookingsByUserId(parseInt(userId));
+      setBookings(data || []);
+    } catch (error) {
+      toast.error("Failed to load bookings");
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCancelBooking = async (bookingId) => {
     if (!window.confirm("Are you sure you want to cancel this booking?")) {
@@ -101,24 +67,30 @@ export default function CustomerBooking() {
     try {
       await cancelBooking(bookingId);
       toast.success("Booking cancelled successfully");
-      fetchBookings(); // Refresh list
+      fetchBookings();
     } catch (error) {
       toast.error("Failed to cancel booking: " + error.message);
     }
   };
 
-  // Filter bookings based on active tab
-  const filteredBookings = bookings.filter(booking => {
-    const today = new Date().toISOString().split('T')[0];
-    
+  const filteredBookings = bookings.filter((booking) => {
+    const today = new Date().toISOString().split("T")[0];
+
     switch (activeTab) {
       case "upcoming":
-        return (booking.status === 'CONFIRMED' || booking.status === 'PENDING_PAYMENT') && 
-               booking.checkInDate >= today;
+        return (
+          (booking.status === "CONFIRMED" ||
+            booking.status === "PENDING_PAYMENT") &&
+          booking.checkInDate >= today
+        );
       case "past":
-        return booking.checkOutDate < today || booking.status === 'COMPLETED' || booking.status === 'CANCELLED';
+        return (
+          booking.checkOutDate < today ||
+          booking.status === "COMPLETED" ||
+          booking.status === "CANCELLED"
+        );
       case "pending":
-        return booking.status === 'PENDING_PAYMENT';
+        return booking.status === "PENDING_PAYMENT";
       default:
         return true;
     }
@@ -126,17 +98,28 @@ export default function CustomerBooking() {
 
   const renderStatusBadge = (status) => {
     const statusConfig = {
-      'PENDING_PAYMENT': { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Payment' },
-      'CONFIRMED': { color: 'bg-green-100 text-green-800', text: 'Confirmed' },
-      'CANCELLED': { color: 'bg-red-100 text-red-800', text: 'Cancelled' },
-      'COMPLETED': { color: 'bg-blue-100 text-blue-800', text: 'Completed' },
-      'CHECKED_IN': { color: 'bg-purple-100 text-purple-800', text: 'Checked In' }
+      PENDING_PAYMENT: {
+        color: "bg-yellow-100 text-yellow-800",
+        text: "Pending Payment",
+      },
+      CONFIRMED: { color: "bg-green-100 text-green-800", text: "Confirmed" },
+      CANCELLED: { color: "bg-red-100 text-red-800", text: "Cancelled" },
+      COMPLETED: { color: "bg-blue-100 text-blue-800", text: "Completed" },
+      CHECKED_IN: {
+        color: "bg-purple-100 text-purple-800",
+        text: "Checked In",
+      },
     };
-    
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', text: status };
-    
+
+    const config = statusConfig[status] || {
+      color: "bg-gray-100 text-gray-800",
+      text: status,
+    };
+
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.text}
       </span>
     );
@@ -168,8 +151,8 @@ export default function CustomerBooking() {
               onClick={() => setActiveTab("all")}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "all"
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               All Bookings
@@ -178,8 +161,8 @@ export default function CustomerBooking() {
               onClick={() => setActiveTab("upcoming")}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "upcoming"
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               Upcoming
@@ -188,8 +171,8 @@ export default function CustomerBooking() {
               onClick={() => setActiveTab("pending")}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "pending"
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               Pending Payment
@@ -198,8 +181,8 @@ export default function CustomerBooking() {
               onClick={() => setActiveTab("past")}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "past"
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               Past
@@ -215,14 +198,22 @@ export default function CustomerBooking() {
             <span className="text-gray-400 text-2xl">📅</span>
           </div>
           <h3 className="text-lg font-semibold text-gray-700 mb-2">
-            {activeTab === "all" ? "No bookings found" : 
-             activeTab === "upcoming" ? "No upcoming bookings" :
-             activeTab === "pending" ? "No pending payments" : "No past bookings"}
+            {activeTab === "all"
+              ? "No bookings found"
+              : activeTab === "upcoming"
+              ? "No upcoming bookings"
+              : activeTab === "pending"
+              ? "No pending payments"
+              : "No past bookings"}
           </h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            {activeTab === "all" ? "You haven't made any bookings yet." :
-             activeTab === "upcoming" ? "You don't have any upcoming stays." :
-             activeTab === "pending" ? "All your bookings are confirmed." : "No past stays found."}
+            {activeTab === "all"
+              ? "You haven't made any bookings yet."
+              : activeTab === "upcoming"
+              ? "You don't have any upcoming stays."
+              : activeTab === "pending"
+              ? "All your bookings are confirmed."
+              : "No past stays found."}
           </p>
           {activeTab !== "all" && (
             <button
@@ -235,17 +226,22 @@ export default function CustomerBooking() {
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredBookings.map(booking => {
+          {filteredBookings.map((booking) => {
             const checkInDate = new Date(booking.checkInDate);
             const checkOutDate = new Date(booking.checkOutDate);
-            const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-            
+            const nights = Math.ceil(
+              (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+            );
+
             const isUpcoming = checkInDate > new Date();
             const isPast = checkOutDate < new Date();
-            const isPendingPayment = booking.status === 'PENDING_PAYMENT';
-            
+            const isPendingPayment = booking.status === "PENDING_PAYMENT";
+
             return (
-              <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div
+                key={booking.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
+              >
                 <div className="md:flex">
                   {/* Room Image */}
                   <div className="md:w-1/4">
@@ -268,12 +264,14 @@ export default function CustomerBooking() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Booking Details */}
                   <div className="md:w-3/4 p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900">{booking.roomName}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {booking.roomName}
+                        </h3>
                         <p className="text-gray-600">{booking.roomCategory}</p>
                       </div>
                       <div className="text-right">
@@ -283,19 +281,25 @@ export default function CustomerBooking() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div>
                         <p className="text-sm text-gray-600">Check-in</p>
-                        <p className="font-medium">{checkInDate.toLocaleDateString()}</p>
+                        <p className="font-medium">
+                          {checkInDate.toLocaleDateString()}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Check-out</p>
-                        <p className="font-medium">{checkOutDate.toLocaleDateString()}</p>
+                        <p className="font-medium">
+                          {checkOutDate.toLocaleDateString()}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Duration</p>
-                        <p className="font-medium">{nights} night{nights !== 1 ? 's' : ''}</p>
+                        <p className="font-medium">
+                          {nights} night{nights !== 1 ? "s" : ""}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Booking ID</p>
@@ -312,14 +316,25 @@ export default function CustomerBooking() {
                         </p>
                       </div>
                     </div>
-                    
+
                     {booking.specialRequests && (
-                      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600 mb-1">Special Requests:</p>
-                        <p className="text-gray-800">{booking.specialRequests}</p>
-                      </div>
+                      <button
+                        onClick={() => {
+                          toast.info(
+                            `Special Request: ${booking.specialRequests}`,
+                            {
+                              autoClose: 10000,
+                              position: "top-center",
+                            }
+                          );
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 text-sm"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Request
+                      </button>
                     )}
-                    
+
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3">
                       {isPendingPayment && (
@@ -330,9 +345,9 @@ export default function CustomerBooking() {
                           Complete Payment
                         </button>
                       )}
-                      
-                      {(booking.status === 'PENDING_PAYMENT' || 
-                        (booking.status === 'CONFIRMED' && isUpcoming)) && (
+
+                      {(booking.status === "PENDING_PAYMENT" ||
+                        (booking.status === "CONFIRMED" && isUpcoming)) && (
                         <button
                           onClick={() => handleCancelBooking(booking.id)}
                           className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
@@ -340,16 +355,18 @@ export default function CustomerBooking() {
                           Cancel Booking
                         </button>
                       )}
-                      
-                      {booking.status === 'CONFIRMED' && isUpcoming && (
+
+                      {booking.status === "CONFIRMED" && isUpcoming && (
                         <button
-                          onClick={() => window.open(`mailto:${booking.contactEmail}`)}
+                          onClick={() =>
+                            window.open(`mailto:${booking.contactEmail}`)
+                          }
                           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                         >
                           Contact Hotel
                         </button>
                       )}
-                      
+
                       {booking.roomId && (
                         <button
                           onClick={() => navigate(`/booking/${booking.roomId}`)}
@@ -358,9 +375,11 @@ export default function CustomerBooking() {
                           Book Again
                         </button>
                       )}
-                      
+
                       <button
-                        onClick={() => navigate(`/booking/details/${booking.id}`)}
+                        onClick={() =>
+                          navigate(`/booking/details/${booking.id}`)
+                        }
                         className="border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
                       >
                         View Details

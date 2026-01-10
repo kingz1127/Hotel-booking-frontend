@@ -10,8 +10,6 @@ import AdminStaffs from "./pages/Administration/AdminStaffs";
 import HomePage from "./pages/LandingPage/HomePage";
 import { ToastContainer } from "react-toastify";
 
-// Import Super Admin components
-
 import SuperAdminDashboard from "./pages/SuperAdmin/SuperAdminDashboard";
 
 import SuperAdminLayout from "./pages/SuperAdmin/SuperAdminLayout";
@@ -30,11 +28,15 @@ import CustomerBooking from "./pages/Customers/CustomerBooking";
 import CreateBookings from "./pages/Booking/CreateBookings";
 import PaymentPage from "./pages/Payment/PaymentPage";
 import AdminDashboard from "./pages/Administration/AdminDashboard";
+import RoomStatus from "./pages/Administration/RoomStatus";
+import AdminBookings from "./pages/Administration/AdminBookings";
+import WalkInBooking from "./pages/Administration/WalkInBooking";
+import ForgotPassword from "./pages/LandingPage/ForgotPassword";
 
 function App() {
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={2000} />
       <BrowserRouter>
         <Routes>
           {/* This is the home page */}
@@ -42,6 +44,7 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="register" element={<Register />} />
             <Route path="login" element={<Login />} />
+            <Route path="password/forgot" element={<ForgotPassword />} />
           </Route>
           
           {/* Customer Routes */}
@@ -97,6 +100,9 @@ function App() {
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="rooms" element={<AdminRooms />} />
             <Route path="staffs" element={<AdminStaffs />} />
+            <Route path="roomstatus" element={<RoomStatus/>} />
+            <Route path="bookings" element={<AdminBookings />} />
+            <Route path="/admin/walk-in-booking" element={<WalkInBooking />} />
           </Route>
         </Routes>
       </BrowserRouter>

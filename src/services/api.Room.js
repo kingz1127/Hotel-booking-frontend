@@ -49,11 +49,11 @@ export async function createRoom(roomData, imageFile) {
 export async function getAllRooms(page, size) {
   try {
     const url = API_BASE + `rooms?page=${page}&size=${size}`;
-    console.log("Fetching rooms from:", url);
+    // console.log("Fetching rooms from:", url);
     
     const response = await fetch(url);
 
-    console.log("Response status:", response.status);
+    // console.log("Response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();

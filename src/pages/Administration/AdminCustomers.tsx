@@ -53,14 +53,14 @@ export default function AdminCustomers() {
     return (
         <div className="container mx-auto p-6">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Registered Customers</h1>
+                <h1 className="text-3xl font-bold text-gray-800">Customers</h1>
                 <button 
                     onClick={fetchCustomers}
                     className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
                     Refresh
                 </button>
-            </div>
+            </div> 
             
             {customers.length === 0 ? (
                 <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">

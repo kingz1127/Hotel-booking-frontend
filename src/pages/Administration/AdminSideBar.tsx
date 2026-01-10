@@ -1,3 +1,5 @@
+import { BiBook } from "react-icons/bi"; 
+import { ImStatsBars2 } from "react-icons/im"; 
 // src/pages/Administration/AdminSideBar.jsx
 import { NavLink, useNavigate } from "react-router-dom";
 import { 
@@ -110,6 +112,36 @@ export default function AdminSideBar() {
           <Bed className="h-5 w-5" />
           Rooms Management
         </NavLink>
+
+         <NavLink
+          to="/admin/roomstatus"
+          className={({ isActive }) =>
+            `flex items-center gap-3 p-3 rounded-lg transition-colors ${
+              isActive 
+                ? "bg-[#c1bd3f] text-white font-semibold" 
+                : "hover:bg-gray-800"
+            }`
+          }
+        >
+          <ImStatsBars2 className="h-5 w-5" />
+          Room Status
+        </NavLink>
+
+        <NavLink
+          to="/admin/bookings"
+          className={({ isActive }) =>
+            `flex items-center gap-3 p-3 rounded-lg transition-colors ${
+              isActive 
+                ? "bg-[#c1bd3f] text-white font-semibold" 
+                : "hover:bg-gray-800"
+            }`
+          }
+        >
+          <BiBook  className="h-5 w-5" />
+          Bookings
+        </NavLink>
+
+        
 
         {/* Changed from: to="staffs" to to="/admin/staffs" */}
         <NavLink

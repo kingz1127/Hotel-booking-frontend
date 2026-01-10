@@ -1,10 +1,22 @@
-
-
 import { useState, useEffect } from "react";
-import { TbRulerMeasure } from "react-icons/tb"; 
-import { FaBath, FaBed, FaTimes, FaTag, FaRuler, FaUsers, FaCalendarCheck } from "react-icons/fa"; 
+import { TbRulerMeasure } from "react-icons/tb";
+import {
+  FaBath,
+  FaBed,
+  FaTimes,
+  FaTag,
+  FaRuler,
+  FaUsers,
+  FaCalendarCheck,
+} from "react-icons/fa";
 import { Card } from "./ui/card";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "./ui/carousel";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "./ui/carousel";
 import { getAllRooms } from "../services/api.room.js";
 import { Loader2, ChevronRight, Star, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -22,31 +34,41 @@ export default function RoomsSuites() {
     fetchRooms();
   }, []);
 
-  const fetchRooms = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getAllRooms(0, 20);
-      console.log("Fetched rooms for display:", data);
-      
-      const limitedRooms = (data || []).slice(0, 6);
-      setRooms(limitedRooms);
-    } catch (error) {
-      console.error("Failed to fetch rooms:", error);
-      setError("Failed to load rooms. Please try again later.");
-      setRooms([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Update the fetchRooms function
+const fetchRooms = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const data = await getAllRooms(0, 20);
+    console.log("Fetched rooms for display:", data);
+
+    // Process rooms to ensure availableRooms is calculated correctly
+    const processedRooms = (data || []).map(room => ({
+      ...room,
+      // Ensure availableRooms is calculated as total - booked
+      availableRooms: Math.max(0, 
+        (room.roomQuantity || 0) - (room.bookedRooms || 0)
+      )
+    }));
+
+    const limitedRooms = processedRooms.slice(0, 6);
+    setRooms(limitedRooms);
+  } catch (error) {
+    console.error("Failed to fetch rooms:", error);
+    setError("Failed to load rooms. Please try again later.");
+    setRooms([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Format price with discount calculation
   const formatPrice = (price, discount = 0) => {
     if (!price && price !== 0) return "$0";
     const finalPrice = discount > 0 ? price * (1 - discount / 100) : price;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
     }).format(finalPrice);
   };
@@ -54,13 +76,13 @@ export default function RoomsSuites() {
   // Get category label
   const getCategoryLabel = (category) => {
     const categoryLabels = {
-      "Standard": "Luxury Room",
-      "Deluxe": "Luxury Room",
-      "Suite": "Luxury Suite",
-      "Presidential": "Luxury Suite",
-      "Family": "Luxury Room",
-      "Executive": "Luxury Suite",
-      "Studio": "Luxury Room"
+      Standard: "Luxury Room",
+      Deluxe: "Luxury Room",
+      Suite: "Luxury Suite",
+      Presidential: "Luxury Suite",
+      Family: "Luxury Room",
+      Executive: "Luxury Suite",
+      Studio: "Luxury Room",
     };
     return categoryLabels[category] || "Room";
   };
@@ -75,70 +97,175 @@ export default function RoomsSuites() {
   const handleRoomClick = (room) => {
     setSelectedRoom(room);
     setIsModalOpen(true);
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
   };
 
   // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedRoom(null);
-    document.body.style.overflow = 'unset';
+    document.body.style.overflow = "unset";
   };
 
   // Check if user is logged in as CUSTOMER (using sessionStorage)
-  const isCustomerLoggedIn = () => {
+ // Improved Check if user is logged in as CUSTOMER
+// Improved login check function
+const isCustomerLoggedIn = () => {
+  try {
     const customerToken = sessionStorage.getItem("customerToken");
-    const customer = sessionStorage.getItem("customer");
-    
+    const customerData = sessionStorage.getItem("customer");
+
     console.log("=== CUSTOMER LOGIN CHECK ===");
-    console.log("customerToken from sessionStorage:", customerToken);
-    console.log("customer from sessionStorage:", customer);
-    
+    console.log("customerToken:", customerToken);
+    console.log("customer data:", customerData);
+
+    // If no token and no customer data, definitely not logged in
+    if (!customerToken && !customerData) {
+      console.log("❌ No credentials found");
+      return false;
+    }
+
     // Parse customer object if it exists
     let parsedCustomer = null;
-    if (customer) {
+    if (customerData) {
       try {
-        parsedCustomer = JSON.parse(customer);
+        parsedCustomer = JSON.parse(customerData);
+        console.log("Parsed customer:", parsedCustomer);
       } catch (e) {
         console.error("Error parsing customer:", e);
+        return false;
       }
     }
+
+    // Check for valid token (either standalone or in customer object)
+    const hasValidToken = !!(
+      customerToken || 
+      (parsedCustomer && parsedCustomer.token)
+    );
     
-    const isLoggedIn = !!(customerToken || parsedCustomer?.token);
-    const isCustomer = parsedCustomer?.role === "CUSTOMER";
+    // Check for customer role
+    const isCustomerRole = parsedCustomer?.role === "CUSTOMER";
     
-    console.log("Is logged in?", isLoggedIn);
-    console.log("Is customer?", isCustomer);
+    console.log("Has valid token?", hasValidToken);
+    console.log("Is CUSTOMER role?", isCustomerRole);
     
-    return isLoggedIn && isCustomer;
-  };
+    // Must have BOTH valid token AND customer role
+    const isLoggedIn = hasValidToken && isCustomerRole;
+    console.log("Final login status:", isLoggedIn);
+    
+    return isLoggedIn;
+  } catch (error) {
+    console.error("Error in isCustomerLoggedIn:", error);
+    return false;
+  }
+};
+
+// Enhanced Book Now handler with strict checks
+// Simplified Book Now handler - ALWAYS go to login
+const handleBookNow = (room) => {
+  console.log("=== BOOK NOW CLICKED ===");
+  console.log("Room:", room.roomName, "ID:", room.id);
+  
+  // Check availability first
+  const availableRooms = getRoomProperty(room, "availableRooms", 0);
+  if (availableRooms <= 0) {
+    console.log("❌ Room not available");
+    toast.error("This room is no longer available. Please select another room.", {
+      position: "top-center",
+      autoClose: 3000,
+    });
+    closeModal();
+    return;
+  }
+
+  // Store room details for after login
+  sessionStorage.setItem("selectedRoomId", room.id);
+  sessionStorage.setItem("redirectAfterLogin", `/booking/${room.id}`);
+  sessionStorage.setItem("selectedRoomName", room.roomName);
+  sessionStorage.setItem("selectedRoomPrice", room.roomPrice?.toString() || "0");
+  
+  console.log("Stored in sessionStorage for login redirect:", {
+    roomId: room.id,
+    roomName: room.roomName
+  });
+
+  // ALWAYS redirect to login page
+  console.log("Redirecting to login page...");
+  
+  toast.info(`Please login to book "${room.roomName}"`, {
+    position: "top-center",
+    autoClose: 3000,
+  });
+
+  closeModal();
+  
+  // Navigate to login after a short delay
+  setTimeout(() => {
+    navigate("/login");
+  }, 100);
+};
+
+  const checkRoomAvailability = async (roomId) => {
+  try {
+    // If you have an API endpoint to check single room
+    const response = await fetch(`/api/rooms/${roomId}/availability`);
+    const data = await response.json();
+    return data.availableRooms > 0;
+  } catch (error) {
+    console.error("Error checking room availability:", error);
+    return false;
+  }
+};
 
   // Handle Book Now button click
-  const handleBookNow = (room) => {
-    console.log("=== BOOK NOW CLICKED ===");
-    console.log("Room:", room.roomName, "ID:", room.id);
-    
-    // Store room ID in sessionStorage for after login
-    sessionStorage.setItem('selectedRoomId', room.id);
-    sessionStorage.setItem('redirectAfterLogin', `/booking/${room.id}`);
-    
-    // Check if customer is logged in using sessionStorage
-    if (isCustomerLoggedIn()) {
-      console.log("✅ Customer is logged in (sessionStorage), navigating to booking");
-      navigate(`/booking/${room.id}`);
-    } else {
-      console.log("❌ Customer NOT logged in (sessionStorage), redirecting to login");
-      
-      // Show toast message
-      toast.info(`Please login as customer to book "${room.roomName}"`, {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      
-      // Redirect to login page
-      navigate('/login');
-    }
-  };
+  // Handle Book Now button click
+// const handleBookNow = (room) => {
+//   console.log("=== BOOK NOW CLICKED ===");
+//   console.log("Room:", room.roomName, "ID:", room.id);
+  
+//   // First, check availability
+//   if (getRoomProperty(room, "availableRooms", 0) <= 0) {
+//     toast.error("This room is no longer available. Please select another room.", {
+//       position: "top-center",
+//       autoClose: 3000,
+//     });
+//     closeModal();
+//     return;
+//   }
+
+//   // Store room ID in sessionStorage for after login
+//   sessionStorage.setItem("selectedRoomId", room.id);
+//   sessionStorage.setItem("redirectAfterLogin", `/booking/${room.id}`);
+  
+//   // Add room details for display on login page
+//   sessionStorage.setItem("selectedRoomName", room.roomName);
+//   sessionStorage.setItem("selectedRoomPrice", room.roomPrice);
+
+//   console.log("Session storage set for room:", {
+//     selectedRoomId: sessionStorage.getItem("selectedRoomId"),
+//     redirectAfterLogin: sessionStorage.getItem("redirectAfterLogin")
+//   });
+
+//   // ALWAYS check login status first
+//   const isLoggedIn = isCustomerLoggedIn();
+//   console.log("User logged in?", isLoggedIn);
+
+//   if (isLoggedIn) {
+//     console.log("✅ Customer is logged in, navigating to booking");
+//     navigate(`/booking/${room.id}`);
+//   } else {
+//     console.log("❌ Customer NOT logged in, redirecting to login");
+
+//     // Show toast message
+//     toast.info(`Please login as customer to book "${room.roomName}"`, {
+//       position: "top-center",
+//       autoClose: 3000,
+//     });
+
+//     // Redirect to login page
+//     navigate("/login");
+//   }
+// };
 
   // Prevent modal close when clicking inside modal content
   const handleModalClick = (e) => {
@@ -149,7 +276,9 @@ export default function RoomsSuites() {
     return (
       <div className="flex flex-col items-center justify-center mt-10 mb-10 min-h-[400px] px-4">
         <Loader2 className="h-12 w-12 animate-spin text-[#c1bd3f]" />
-        <p className="mt-4 text-gray-600 text-sm sm:text-base">Loading rooms...</p>
+        <p className="mt-4 text-gray-600 text-sm sm:text-base">
+          Loading rooms...
+        </p>
       </div>
     );
   }
@@ -171,11 +300,15 @@ export default function RoomsSuites() {
   if (rooms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center mt-10 mb-10 min-h-[400px] px-4">
-        <p className="text-lg sm:text-xl md:text-2xl text-[#c1bd3f]">Rooms & Suites</p>
+        <p className="text-lg sm:text-xl md:text-2xl text-[#c1bd3f]">
+          Rooms & Suites
+        </p>
         <p className="text-3xl sm:text-4xl md:text-5xl mt-4 sm:mt-6 md:mt-8 mb-4 sm:mb-6 md:mb-8 font-serif text-center">
           Luxury Rooms & Suites
         </p>
-        <p className="text-gray-600 text-sm sm:text-base">No rooms available at the moment.</p>
+        <p className="text-gray-600 text-sm sm:text-base">
+          No rooms available at the moment.
+        </p>
       </div>
     );
   }
@@ -183,7 +316,9 @@ export default function RoomsSuites() {
   return (
     <>
       <div className="flex flex-col items-center justify-center mt-6 sm:mt-8 md:mt-10 mb-6 sm:mb-8 md:mb-10 px-4">
-        <p className="text-lg sm:text-xl md:text-2xl text-[#c1bd3f]">Rooms & Suites</p>
+        <p className="text-lg sm:text-xl md:text-2xl text-[#c1bd3f]">
+          Rooms & Suites
+        </p>
         <p className="text-3xl sm:text-4xl md:text-5xl mt-4 sm:mt-6 md:mt-8 mb-4 sm:mb-6 md:mb-8 font-serif text-center">
           Luxury Rooms & Suites
         </p>
@@ -192,22 +327,34 @@ export default function RoomsSuites() {
           <Carousel className="w-full">
             <CarouselContent className="-ml-2 sm:-ml-4 gap-3 sm:gap-5">
               {rooms.map((room) => {
-                const roomId = getRoomProperty(room, 'id');
-                const roomName = getRoomProperty(room, 'roomName', 'Unnamed Room');
-                const roomCategory = getRoomProperty(room, 'roomCategory', 'Standard');
-                const roomPrice = getRoomProperty(room, 'roomPrice', 0);
-                const roomDiscount = getRoomProperty(room, 'roomDiscount', 0);
-                const roomImage = getRoomProperty(room, 'roomImage', '');
-                const roomBeds = getRoomProperty(room, 'roomBeds', 1);
-                const roomBaths = getRoomProperty(room, 'roomBaths', 1);
-                const roomMeasurements = getRoomProperty(room, 'roomMeasurements', 300);
+                const roomId = getRoomProperty(room, "id");
+                const roomName = getRoomProperty(
+                  room,
+                  "roomName",
+                  "Unnamed Room"
+                );
+                const roomCategory = getRoomProperty(
+                  room,
+                  "roomCategory",
+                  "Standard"
+                );
+                const roomPrice = getRoomProperty(room, "roomPrice", 0);
+                const roomDiscount = getRoomProperty(room, "roomDiscount", 0);
+                const roomImage = getRoomProperty(room, "roomImage", "");
+                const roomBeds = getRoomProperty(room, "roomBeds", 1);
+                const roomBaths = getRoomProperty(room, "roomBaths", 1);
+                const roomMeasurements = getRoomProperty(
+                  room,
+                  "roomMeasurements",
+                  300
+                );
 
                 const categoryLabel = getCategoryLabel(roomCategory);
                 const displayPrice = formatPrice(roomPrice, roomDiscount);
 
                 return (
-                  <CarouselItem 
-                    key={roomId} 
+                  <CarouselItem
+                    key={roomId}
                     className="
                       pl-2 sm:pl-4 
                       basis-full 
@@ -217,7 +364,7 @@ export default function RoomsSuites() {
                       xl:basis-1/5
                     "
                   >
-                    <Card 
+                    <Card
                       className="
                         p-2 
                         w-full 
@@ -236,22 +383,26 @@ export default function RoomsSuites() {
                       {/* Room Image */}
                       <div className="relative">
                         {roomImage ? (
-                          <img 
-                            src={roomImage} 
-                            alt={roomName} 
+                          <img
+                            src={roomImage}
+                            alt={roomName}
                             className="w-full h-40 sm:h-48 rounded-tl-xl rounded-tr-xl object-cover"
                             onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/240x192?text=No+Image';
+                              e.target.src =
+                                "https://via.placeholder.com/240x192?text=No+Image";
                             }}
                           />
                         ) : (
                           <div className="w-full h-40 sm:h-48 rounded-tl-xl rounded-tr-xl bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-400 text-xs sm:text-sm">No Image</span>
+                            <span className="text-gray-400 text-xs sm:text-sm">
+                              No Image
+                            </span>
                           </div>
                         )}
-                        
+
                         {/* Category Badge */}
-                        <div className="
+                        <div
+                          className="
                           bg-my-Bg 
                           h-7 sm:h-8 
                           w-24 sm:w-28 
@@ -268,7 +419,8 @@ export default function RoomsSuites() {
                           rounded-tr-[5px] 
                           rounded-br-[5px] 
                           rounded-bl-0
-                        ">
+                        "
+                        >
                           {categoryLabel}
                         </div>
 
@@ -287,7 +439,9 @@ export default function RoomsSuites() {
                           <p className="text-[#058505] text-xl sm:text-2xl font-serif">
                             {displayPrice}
                           </p>
-                          <p className="text-gray-400 text-xs sm:text-sm">/night</p>
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            /night
+                          </p>
                           {roomDiscount > 0 && (
                             <span className="text-xs sm:text-sm text-gray-400 line-through ml-2">
                               ${roomPrice}
@@ -299,34 +453,44 @@ export default function RoomsSuites() {
                         <p className="font-serif h-auto sm:h-9 mt-2 sm:mt-3.5 text-base sm:text-lg font-medium line-clamp-2">
                           {roomName}
                         </p>
-                        
+
                         {/* Room Category */}
-                        <p className="text-xs sm:text-sm text-gray-500 mb-2">{roomCategory}</p>
-                        
+                        <p className="text-xs sm:text-sm text-gray-500 mb-2">
+                          {roomCategory}
+                        </p>
+
                         <hr className="my-2" />
-                        
+
                         {/* Room Features */}
                         <div className="flex justify-around items-center mt-2 sm:mt-3.5 text-xs sm:text-sm">
                           <p className="flex gap-0.5 items-center justify-center">
-                            <FaBed className="text-[#c1bd3f] text-sm sm:text-base" /> 
-                            <span className="hidden sm:inline">{roomBeds} Bed{roomBeds !== 1 ? 's' : ''}</span>
+                            <FaBed className="text-[#c1bd3f] text-sm sm:text-base" />
+                            <span className="hidden sm:inline">
+                              {roomBeds} Bed{roomBeds !== 1 ? "s" : ""}
+                            </span>
                             <span className="sm:hidden">{roomBeds}</span>
                           </p>
                           <p className="flex gap-0.5 items-center justify-center">
-                            <FaBath className="text-[#c1bd3f] text-sm sm:text-base" /> 
-                            <span className="hidden sm:inline">{roomBaths} Bath{roomBaths !== 1 ? 's' : ''}</span>
+                            <FaBath className="text-[#c1bd3f] text-sm sm:text-base" />
+                            <span className="hidden sm:inline">
+                              {roomBaths} Bath{roomBaths !== 1 ? "s" : ""}
+                            </span>
                             <span className="sm:hidden">{roomBaths}</span>
                           </p>
                           <p className="flex gap-0.5 items-center justify-center">
-                            <TbRulerMeasure className="text-[#c1bd3f] text-sm sm:text-base" /> 
-                            <span className="hidden sm:inline">{roomMeasurements} sqft</span>
-                            <span className="sm:hidden">{roomMeasurements}</span>
+                            <TbRulerMeasure className="text-[#c1bd3f] text-sm sm:text-base" />
+                            <span className="hidden sm:inline">
+                              {roomMeasurements} sqft
+                            </span>
+                            <span className="sm:hidden">
+                              {roomMeasurements}
+                            </span>
                           </p>
                         </div>
 
                         {/* Quantity Available */}
                         <div className="mt-2 sm:mt-3 text-center">
-                          <span className={`inline-block px-2 py-1 rounded text-xs ${
+                          {/* <span className={`inline-block px-2 py-1 rounded text-xs ${
                             getRoomProperty(room, 'roomQuantity', 0) > 0 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
@@ -334,13 +498,29 @@ export default function RoomsSuites() {
                             {getRoomProperty(room, 'roomQuantity', 0) > 0 
                               ? `${getRoomProperty(room, 'roomQuantity')} available` 
                               : 'Sold out'}
+                          </span> */}
+
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs ${
+                              getRoomProperty(room, "availableRooms", 0) > 0
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {getRoomProperty(room, "availableRooms", 0) > 0
+                              ? `${getRoomProperty(
+                                  room,
+                                  "availableRooms"
+                                )} available`
+                              : "Sold out"}
                           </span>
                         </div>
 
                         {/* View Details Button */}
                         <div className="mt-3 sm:mt-4 text-center">
                           <button className="text-[#c1bd3f] text-xs sm:text-sm font-medium hover:text-[#a8a535] flex items-center justify-center gap-1 mx-auto">
-                            View Details <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                            View Details{" "}
+                            <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                         </div>
                       </div>
@@ -356,17 +536,18 @@ export default function RoomsSuites() {
 
         {/* Show count */}
         <p className="mt-4 sm:mt-6 text-gray-500 text-center text-xs sm:text-sm md:text-base">
-          Showing {rooms.length} of our finest room{rooms.length !== 1 ? 's' : ''}
+          Showing {rooms.length} of our finest room
+          {rooms.length !== 1 ? "s" : ""}
         </p>
       </div>
 
       {/* Room Details Modal */}
       {isModalOpen && selectedRoom && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm"
           onClick={closeModal}
         >
-          <div 
+          <div
             className="
               bg-white 
               rounded-xl sm:rounded-2xl 
@@ -380,21 +561,24 @@ export default function RoomsSuites() {
             {/* Modal Header */}
             <div className="relative">
               {/* Room Image */}
-              {getRoomProperty(selectedRoom, 'roomImage') ? (
-                <img 
-                  src={getRoomProperty(selectedRoom, 'roomImage')}
-                  alt={getRoomProperty(selectedRoom, 'roomName', 'Room')}
+              {getRoomProperty(selectedRoom, "roomImage") ? (
+                <img
+                  src={getRoomProperty(selectedRoom, "roomImage")}
+                  alt={getRoomProperty(selectedRoom, "roomName", "Room")}
                   className="w-full h-48 sm:h-56 md:h-64 object-cover"
                   onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/800x256?text=No+Image';
+                    e.target.src =
+                      "https://via.placeholder.com/800x256?text=No+Image";
                   }}
                 />
               ) : (
                 <div className="w-full h-48 sm:h-56 md:h-64 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400 text-base sm:text-lg">No Image Available</span>
+                  <span className="text-gray-400 text-base sm:text-lg">
+                    No Image Available
+                  </span>
                 </div>
               )}
-              
+
               {/* Close Button */}
               <button
                 onClick={closeModal}
@@ -405,13 +589,15 @@ export default function RoomsSuites() {
 
               {/* Category Badge */}
               <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-my-Bg px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-lg font-medium text-xs sm:text-sm">
-                {getCategoryLabel(getRoomProperty(selectedRoom, 'roomCategory', 'Standard'))}
+                {getCategoryLabel(
+                  getRoomProperty(selectedRoom, "roomCategory", "Standard")
+                )}
               </div>
 
               {/* Discount Badge */}
-              {getRoomProperty(selectedRoom, 'roomDiscount', 0) > 0 && (
+              {getRoomProperty(selectedRoom, "roomDiscount", 0) > 0 && (
                 <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-red-500 text-white px-2 sm:px-3 py-1 rounded-full font-bold text-xs sm:text-sm">
-                  -{getRoomProperty(selectedRoom, 'roomDiscount')}% OFF
+                  -{getRoomProperty(selectedRoom, "roomDiscount")}% OFF
                 </div>
               )}
             </div>
@@ -422,25 +608,27 @@ export default function RoomsSuites() {
               <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-4">
                 <div>
                   <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-gray-900">
-                    {getRoomProperty(selectedRoom, 'roomName', 'Unnamed Room')}
+                    {getRoomProperty(selectedRoom, "roomName", "Unnamed Room")}
                   </h2>
                   <p className="text-gray-600 mt-1 text-sm sm:text-base">
-                    {getRoomProperty(selectedRoom, 'roomCategory', 'Standard')}
+                    {getRoomProperty(selectedRoom, "roomCategory", "Standard")}
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
                   <div className="flex items-center gap-2">
                     <span className="text-[#058505] text-2xl sm:text-3xl font-bold">
                       {formatPrice(
-                        getRoomProperty(selectedRoom, 'roomPrice', 0),
-                        getRoomProperty(selectedRoom, 'roomDiscount', 0)
+                        getRoomProperty(selectedRoom, "roomPrice", 0),
+                        getRoomProperty(selectedRoom, "roomDiscount", 0)
                       )}
                     </span>
-                    <span className="text-gray-500 text-sm sm:text-base">/night</span>
+                    <span className="text-gray-500 text-sm sm:text-base">
+                      /night
+                    </span>
                   </div>
-                  {getRoomProperty(selectedRoom, 'roomDiscount', 0) > 0 && (
+                  {getRoomProperty(selectedRoom, "roomDiscount", 0) > 0 && (
                     <span className="text-gray-400 line-through text-sm sm:text-base">
-                      ${getRoomProperty(selectedRoom, 'roomPrice', 0)}
+                      ${getRoomProperty(selectedRoom, "roomPrice", 0)}
                     </span>
                   )}
                 </div>
@@ -448,9 +636,15 @@ export default function RoomsSuites() {
 
               {/* Room Description */}
               <div className="mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-gray-800">Description</h3>
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-gray-800">
+                  Description
+                </h3>
                 <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
-                  {getRoomProperty(selectedRoom, 'roomDescription', 'No description available.')}
+                  {getRoomProperty(
+                    selectedRoom,
+                    "roomDescription",
+                    "No description available."
+                  )}
                 </p>
               </div>
 
@@ -458,29 +652,51 @@ export default function RoomsSuites() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-center">
                   <FaBed className="h-5 w-5 sm:h-6 sm:w-6 text-[#c1bd3f] mx-auto mb-2" />
-                  <p className="font-semibold text-sm sm:text-base">{getRoomProperty(selectedRoom, 'roomBeds', 1)} Bed{getRoomProperty(selectedRoom, 'roomBeds', 1) !== 1 ? 's' : ''}</p>
-                  <p className="text-xs sm:text-sm text-gray-500">Sleeps {getRoomProperty(selectedRoom, 'roomBeds', 1) * 2}</p>
+                  <p className="font-semibold text-sm sm:text-base">
+                    {getRoomProperty(selectedRoom, "roomBeds", 1)} Bed
+                    {getRoomProperty(selectedRoom, "roomBeds", 1) !== 1
+                      ? "s"
+                      : ""}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Sleeps {getRoomProperty(selectedRoom, "roomBeds", 1) * 2}
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-center">
                   <FaBath className="h-5 w-5 sm:h-6 sm:w-6 text-[#c1bd3f] mx-auto mb-2" />
-                  <p className="font-semibold text-sm sm:text-base">{getRoomProperty(selectedRoom, 'roomBaths', 1)} Bath{getRoomProperty(selectedRoom, 'roomBaths', 1) !== 1 ? 's' : ''}</p>
-                  <p className="text-xs sm:text-sm text-gray-500">Private bathroom</p>
+                  <p className="font-semibold text-sm sm:text-base">
+                    {getRoomProperty(selectedRoom, "roomBaths", 1)} Bath
+                    {getRoomProperty(selectedRoom, "roomBaths", 1) !== 1
+                      ? "s"
+                      : ""}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Private bathroom
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-center">
                   <TbRulerMeasure className="h-5 w-5 sm:h-6 sm:w-6 text-[#c1bd3f] mx-auto mb-2" />
-                  <p className="font-semibold text-sm sm:text-base">{getRoomProperty(selectedRoom, 'roomMeasurements', 300)} sqft</p>
+                  <p className="font-semibold text-sm sm:text-base">
+                    {getRoomProperty(selectedRoom, "roomMeasurements", 300)}{" "}
+                    sqft
+                  </p>
                   <p className="text-xs sm:text-sm text-gray-500">Room size</p>
                 </div>
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-center">
                   <FaUsers className="h-5 w-5 sm:h-6 sm:w-6 text-[#c1bd3f] mx-auto mb-2" />
-                  <p className="font-semibold text-sm sm:text-base">{getRoomProperty(selectedRoom, 'roomQuantity', 0)} Available</p>
+                  {/* <p className="font-semibold text-sm sm:text-base">
+                    {getRoomProperty(selectedRoom, "roomQuantity", 0)} Available
+                  </p> */}
+                  <p className="text-xs sm:text-sm text-gray-500">{getRoomProperty(selectedRoom, 'availableRooms', 0)} Available</p>
                   <p className="text-xs sm:text-sm text-gray-500">Units left</p>
                 </div>
               </div>
 
               {/* Amenities/Features */}
               <div className="mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-gray-800">Room Amenities</h3>
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-gray-800">
+                  Room Amenities
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -488,7 +704,9 @@ export default function RoomsSuites() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Air Conditioning</span>
+                    <span className="text-sm sm:text-base">
+                      Air Conditioning
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -504,7 +722,9 @@ export default function RoomsSuites() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Safe Deposit Box</span>
+                    <span className="text-sm sm:text-base">
+                      Safe Deposit Box
+                    </span>
                   </div>
                 </div>
               </div>
@@ -519,17 +739,19 @@ export default function RoomsSuites() {
                 </button>
                 <button
                   onClick={() => handleBookNow(selectedRoom)}
-                  disabled={getRoomProperty(selectedRoom, 'roomQuantity', 0) <= 0}
+                disabled={
+  getRoomProperty(selectedRoom, "availableRooms", 0) <= 0
+}
                   className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                    getRoomProperty(selectedRoom, 'roomQuantity', 0) > 0
-                      ? 'bg-[#c1bd3f] hover:bg-[#a8a535] text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {getRoomProperty(selectedRoom, 'roomQuantity', 0) > 0
-                    ? 'Book Now'
-                    : 'Sold Out'}
-                </button>
+  getRoomProperty(selectedRoom, "availableRooms", 0) > 0
+    ? "bg-[#c1bd3f] hover:bg-[#a8a535] text-white"
+    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+}`}
+>
+{getRoomProperty(selectedRoom, "availableRooms", 0) > 0
+  ? "Book Now"
+  : "Sold Out"}
+</button>
               </div>
             </div>
           </div>

@@ -18,118 +18,147 @@ export default function CreateBookings() {
   });
 
   useEffect(() => {
-    const fetchRoomAndCheckAuth = async () => {
-      const userId = localStorage.getItem("userId");
-      if (!userId) {
-        toast.error("Please login to book a room");
-        navigate("/login");
-        return;
-      }
-
-      try {
-        const roomData = await getRoomById(roomId);
-        setRoom(roomData);
-      } catch (error) {
-        toast.error("Room not found");
-        navigate("/rooms");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRoomAndCheckAuth();
-  }, [roomId, navigate]);
-
-  const handleBookingSubmit = async (e) => {
-    e.preventDefault();
+  const fetchRoomAndCheckAuth = async () => {
+    // Check sessionStorage instead of localStorage
+    const customerToken = sessionStorage.getItem("customerToken");
+    const customer = sessionStorage.getItem("customer");
     
-    const userId = localStorage.getItem("userId");
-    const userEmail = localStorage.getItem("userEmail");
-    const userPhone = localStorage.getItem("userPhone");
+    console.log("=== CREATE BOOKING AUTH CHECK ===");
+    console.log("customerToken:", customerToken);
+    console.log("customer:", customer);
     
-    // Validate dates
-    const today = new Date().toISOString().split('T')[0];
-    if (bookingData.checkIn < today) {
-      toast.error("Check-in date must be today or in the future");
+    if (!customerToken) {
+      toast.error("Please login to book a room");
+      navigate("/login");
       return;
     }
-    
-    if (bookingData.checkOut <= bookingData.checkIn) {
-      toast.error("Check-out date must be after check-in date");
-      return;
-    }
-    
-    // Prepare booking payload matching backend requirements
-    const bookingPayload = {
-      roomId: parseInt(roomId),
-      userId: parseInt(userId),
-      checkInDate: bookingData.checkIn,
-      checkOutDate: bookingData.checkOut,
-      numberOfGuests: parseInt(bookingData.guests),
-      totalAmount: calculateTotalPrice(),
-      specialRequests: bookingData.specialRequests || "",
-      contactPhone: userPhone || "1234567890", // Default if missing
-      contactEmail: userEmail || "user@example.com" // Default if missing
-    };
-    
-    console.log("Creating booking with payload:", bookingPayload);
 
     try {
-      const response = await fetch("http://localhost:8080/api/v1/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(bookingPayload),
-      });
-
-      // Get response text first
-      const responseText = await response.text();
-      console.log("Booking response:", response.status, responseText);
-      
-      if (response.ok) {
-        let bookingResult;
-        try {
-          bookingResult = JSON.parse(responseText);
-        } catch {
-          bookingResult = { success: true };
-        }
-        
-        toast.success("Booking created! Redirecting to payment...");
-        
-        // Clean up stored booking context
-        localStorage.removeItem('pendingBooking');
-        localStorage.removeItem('selectedRoomId');
-        localStorage.removeItem('redirectAfterLogin');
-        
-        // ✅ NEW: Redirect to payment page with booking ID
-        if (bookingResult.id) {
-          // Store booking ID for payment page
-          localStorage.setItem('pendingPaymentBookingId', bookingResult.id);
-          localStorage.setItem('pendingPaymentAmount', bookingResult.totalAmount);
-          
-          // Navigate to payment page
-          navigate(`/payment/${bookingResult.id}`);
-        } else {
-          // Fallback: Go to bookings page
-          navigate("/customerpage/customerBookings");
-        }
-      } else {
-        // Try to parse error message
-        let errorMessage = "Booking failed";
-        try {
-          const errorObj = JSON.parse(responseText);
-          errorMessage = errorObj.message || errorMessage;
-        } catch {
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
+      const roomData = await getRoomById(roomId);
+      setRoom(roomData);
     } catch (error) {
-      console.error("Booking error:", error);
-      toast.error(`Booking failed: ${error.message}`);
+      toast.error("Room not found");
+      navigate("/rooms");
+    } finally {
+      setLoading(false);
     }
   };
+
+  fetchRoomAndCheckAuth();
+}, [roomId, navigate]);
+
+  const handleBookingSubmit = async (e) => {
+  e.preventDefault();
+  
+  // Get user info from sessionStorage
+  const customer = sessionStorage.getItem("customer");
+  if (!customer) {
+    toast.error("Please login to book a room");
+    navigate("/login");
+    return;
+  }
+  
+  let parsedCustomer;
+  try {
+    parsedCustomer = JSON.parse(customer);
+  } catch (error) {
+    toast.error("Invalid session. Please login again.");
+    navigate("/login");
+    return;
+  }
+  
+  const userId = parsedCustomer.id;
+  const userEmail = parsedCustomer.email;
+  const userPhone = parsedCustomer.phoneNumber;
+  
+  if (!userId) {
+    toast.error("User information not found. Please login again.");
+    navigate("/login");
+    return;
+  }
+  
+  // Validate dates
+  const today = new Date().toISOString().split('T')[0];
+  if (bookingData.checkIn < today) {
+    toast.error("Check-in date must be today or in the future");
+    return;
+  }
+  
+  if (bookingData.checkOut <= bookingData.checkIn) {
+    toast.error("Check-out date must be after check-in date");
+    return;
+  }
+  
+  // Prepare booking payload matching backend requirements
+  const bookingPayload = {
+    roomId: parseInt(roomId),
+    userId: parseInt(userId),
+    checkInDate: bookingData.checkIn,
+    checkOutDate: bookingData.checkOut,
+    numberOfGuests: parseInt(bookingData.guests),
+    totalAmount: calculateTotalPrice(),
+    specialRequests: bookingData.specialRequests || "",
+    contactPhone: userPhone || "1234567890",
+    contactEmail: userEmail || "user@example.com"
+  };
+  
+  console.log("Creating booking with payload:", bookingPayload);
+
+  try {
+    const response = await fetch("http://localhost:8080/api/v1/bookings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(bookingPayload),
+    });
+
+    // Get response text first
+    const responseText = await response.text();
+    console.log("Booking response:", response.status, responseText);
+    
+    if (response.ok) {
+      let bookingResult;
+      try {
+        bookingResult = JSON.parse(responseText);
+      } catch {
+        bookingResult = { success: true };
+      }
+      
+      toast.success("Booking created! Redirecting to payment...");
+      
+      // Clean up stored booking context
+      sessionStorage.removeItem('selectedRoomId');
+      sessionStorage.removeItem('redirectAfterLogin');
+      
+      // Redirect to payment page with booking ID
+      if (bookingResult.id) {
+        // Store booking ID for payment page
+        sessionStorage.setItem('pendingPaymentBookingId', bookingResult.id);
+        sessionStorage.setItem('pendingPaymentAmount', bookingResult.totalAmount);
+        
+        // Navigate to payment page
+        navigate(`/payment/${bookingResult.id}`);
+      } else {
+        // Fallback: Go to bookings page
+        navigate("/customerpage/customerBookings");
+      }
+    } else {
+      // Try to parse error message
+      let errorMessage = "Booking failed";
+      try {
+        const errorObj = JSON.parse(responseText);
+        errorMessage = errorObj.message || errorMessage;
+      } catch {
+        errorMessage = responseText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+  } catch (error) {
+    console.error("Booking error:", error);
+    toast.error(`Booking failed: ${error.message}`);
+  }
+};
 
   const calculateTotalPrice = () => {
     if (!room || !bookingData.checkIn || !bookingData.checkOut) return 0;
@@ -274,4 +303,4 @@ export default function CreateBookings() {
       </div>
     </div>
   );
-}
+} 

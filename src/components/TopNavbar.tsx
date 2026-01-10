@@ -17,13 +17,13 @@ export default function TopNavbar() {
         text-white
         z-50
         
-        /* Extra small screens (default - up to 639px) */
+        
         h-auto py-2 px-3
         flex flex-col items-center justify-center gap-2
         w-full
         text-xs
         
-        /* Small screens (640px - 767px) */
+        
         sm:h-10 sm:py-0 sm:px-4
         sm:flex-row sm:justify-between
         sm:text-sm

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { Loader2, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import EditRoom from "@/components/EditRoom";
+import { useLocation } from "react-router-dom";
 
 export default function AdminRooms() {
   const [rooms, setRooms] = useState([]);
@@ -23,21 +24,54 @@ export default function AdminRooms() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Fetch rooms
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getAllRooms(0, 50);
-      console.log("Fetched rooms data:", data); // Debug log
-      setRooms(data || []); // Ensure it's always an array
-    } catch (error) {
-      console.error("Failed to fetch rooms:", error);
-      toast.error("Failed to fetch rooms");
-      setRooms([]); // Set empty array on error
-    } finally {
-      setLoading(false);
+
+  const location = useLocation(); // Add this
+  
+  // ... existing state ...
+
+  // Add this effect
+  useEffect(() => {
+    if (location.state?.refresh) {
+      fetchRooms();
+      window.history.replaceState({}, document.title);
     }
-  }, []);
+  }, [location.state]);
+
+
+  // Fetch rooms
+  // Fetch rooms
+const fetchRooms = useCallback(async () => {
+  setLoading(true);
+  try {
+    const data = await getAllRooms(0, 50);
+    console.log("Fetched rooms data:", data); // Debug log
+    
+    // Handle different response formats
+    let roomsArray = [];
+    if (Array.isArray(data)) {
+      // Direct array response
+      roomsArray = data;
+    } else if (data && data.content && Array.isArray(data.content)) {
+      // Paginated response with content array
+      roomsArray = data.content;
+    } else if (data && data.rooms && Array.isArray(data.rooms)) {
+      // Response with rooms property
+      roomsArray = data.rooms;
+    } else if (data && data.data && Array.isArray(data.data)) {
+      // Response with data property
+      roomsArray = data.data;
+    }
+    
+    console.log("Processed rooms array:", roomsArray); // Debug log
+    setRooms(roomsArray);
+  } catch (error) {
+    console.error("Failed to fetch rooms:", error);
+    toast.error("Failed to fetch rooms");
+    setRooms([]); // Set empty array on error
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchRooms();
