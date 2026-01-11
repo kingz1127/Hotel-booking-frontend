@@ -82,8 +82,7 @@ const handleSubmit = async (data: { email: string; code: string }) => {
     
     console.log("Token received:", token);
     
-    // CRITICAL: Save admin data in the EXACT format ProtectedRoute expects
-    // ProtectedRoute expects: { token: "some-token", ...otherProps }
+    
     const adminData = {
       token: token, // MUST have token property
       id: result.id,

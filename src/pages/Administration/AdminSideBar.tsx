@@ -1,6 +1,6 @@
 import { BiBook } from "react-icons/bi"; 
 import { ImStatsBars2 } from "react-icons/im"; 
-// src/pages/Administration/AdminSideBar.jsx
+
 import { NavLink, useNavigate } from "react-router-dom";
 import { 
   Home, 

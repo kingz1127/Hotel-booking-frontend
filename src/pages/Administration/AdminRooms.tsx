@@ -1,5 +1,3 @@
-
-
 import AddRoom from "@/components/AddRoom";
 import { useEffect, useState, useCallback } from "react";
 import { getAllRooms, deleteRoom } from "../../services/api.room.js";
@@ -24,9 +22,8 @@ export default function AdminRooms() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-
   const location = useLocation(); // Add this
-  
+
   // ... existing state ...
 
   // Add this effect
@@ -37,41 +34,40 @@ export default function AdminRooms() {
     }
   }, [location.state]);
 
+  // Fetch rooms
+  // Fetch rooms
+  const fetchRooms = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAllRooms(0, 50);
+      console.log("Fetched rooms data:", data); // Debug log
 
-  // Fetch rooms
-  // Fetch rooms
-const fetchRooms = useCallback(async () => {
-  setLoading(true);
-  try {
-    const data = await getAllRooms(0, 50);
-    console.log("Fetched rooms data:", data); // Debug log
-    
-    // Handle different response formats
-    let roomsArray = [];
-    if (Array.isArray(data)) {
-      // Direct array response
-      roomsArray = data;
-    } else if (data && data.content && Array.isArray(data.content)) {
-      // Paginated response with content array
-      roomsArray = data.content;
-    } else if (data && data.rooms && Array.isArray(data.rooms)) {
-      // Response with rooms property
-      roomsArray = data.rooms;
-    } else if (data && data.data && Array.isArray(data.data)) {
-      // Response with data property
-      roomsArray = data.data;
+      // Handle different response formats
+      let roomsArray = [];
+      if (Array.isArray(data)) {
+        // Direct array response
+        roomsArray = data;
+      } else if (data && data.content && Array.isArray(data.content)) {
+        // Paginated response with content array
+        roomsArray = data.content;
+      } else if (data && data.rooms && Array.isArray(data.rooms)) {
+        // Response with rooms property
+        roomsArray = data.rooms;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        // Response with data property
+        roomsArray = data.data;
+      }
+
+      console.log("Processed rooms array:", roomsArray); // Debug log
+      setRooms(roomsArray);
+    } catch (error) {
+      console.error("Failed to fetch rooms:", error);
+      toast.error("Failed to fetch rooms");
+      setRooms([]); // Set empty array on error
+    } finally {
+      setLoading(false);
     }
-    
-    console.log("Processed rooms array:", roomsArray); // Debug log
-    setRooms(roomsArray);
-  } catch (error) {
-    console.error("Failed to fetch rooms:", error);
-    toast.error("Failed to fetch rooms");
-    setRooms([]); // Set empty array on error
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
     fetchRooms();
@@ -79,7 +75,11 @@ const fetchRooms = useCallback(async () => {
 
   // Handle delete
   async function handleDelete(roomId, roomName) {
-    if (!window.confirm(`Are you sure you want to delete "${roomName}"? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${roomName}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -87,9 +87,9 @@ const fetchRooms = useCallback(async () => {
     try {
       await deleteRoom(roomId);
       toast.success("Room deleted successfully");
-      
+
       // Update local state
-      setRooms(prevRooms => prevRooms.filter(room => room.id !== roomId));
+      setRooms((prevRooms) => prevRooms.filter((room) => room.id !== roomId));
     } catch (error) {
       console.error("Delete failed:", error);
       toast.error(error.message || "Failed to delete room");
@@ -106,10 +106,8 @@ const fetchRooms = useCallback(async () => {
 
   // Handle room update success
   const handleRoomUpdated = (updatedRoom) => {
-    setRooms(prevRooms => 
-      prevRooms.map(room => 
-        room.id === updatedRoom.id ? updatedRoom : room
-      )
+    setRooms((prevRooms) =>
+      prevRooms.map((room) => (room.id === updatedRoom.id ? updatedRoom : room))
     );
     setIsEditDialogOpen(false);
     setEditingRoom(null);
@@ -120,7 +118,7 @@ const fetchRooms = useCallback(async () => {
     console.log("New room added:", newRoom); // Debug log
     // Check if newRoom has id property
     if (newRoom && newRoom.id) {
-      setRooms(prevRooms => [newRoom, ...prevRooms]);
+      setRooms((prevRooms) => [newRoom, ...prevRooms]);
       toast.success("Room added successfully");
     } else {
       // If no ID, refetch the list
@@ -132,9 +130,9 @@ const fetchRooms = useCallback(async () => {
   // Format price display
   const formatPrice = (price) => {
     if (!price && price !== 0) return "$0";
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
     }).format(price);
   };
@@ -149,8 +147,12 @@ const fetchRooms = useCallback(async () => {
     <div className="p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Room Management</h1>
-          <p className="text-gray-600 mt-1">Manage your property's rooms and pricing</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Room Management
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Manage your property's rooms and pricing
+          </p>
         </div>
         <AddRoom onRoomAdded={handleRoomAdded} />
       </div>
@@ -180,42 +182,64 @@ const fetchRooms = useCallback(async () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 hover:bg-gray-50">
-                  <TableHead className="font-semibold text-gray-700">ID</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Name</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Category</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Price</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Discount</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Qty</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Beds</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Baths</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Image</TableHead>
-                  <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    ID
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Name
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Category
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Price
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Discount
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Qty
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Beds
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Baths
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
+                    Image
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700 text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rooms.map((room) => {
                   // Safely access room properties
-                  const roomId = getRoomProperty(room, 'id', 'N/A');
-                  const roomName = getRoomProperty(room, 'roomName', 'Unnamed');
-                  const roomCategory = getRoomProperty(room, 'roomCategory', '');
-                  const roomPrice = getRoomProperty(room, 'roomPrice', 0);
-                  const roomDiscount = getRoomProperty(room, 'roomDiscount', 0);
-                  const roomQuantity = getRoomProperty(room, 'roomQuantity', 0);
-                  const roomBeds = getRoomProperty(room, 'roomBeds', 0);
-                  const roomBaths = getRoomProperty(room, 'roomBaths', 0);
-                  const roomImage = getRoomProperty(room, 'roomImage', '');
+                  const roomId = getRoomProperty(room, "id", "N/A");
+                  const roomName = getRoomProperty(room, "roomName", "Unnamed");
+                  const roomCategory = getRoomProperty(
+                    room,
+                    "roomCategory",
+                    ""
+                  );
+                  const roomPrice = getRoomProperty(room, "roomPrice", 0);
+                  const roomDiscount = getRoomProperty(room, "roomDiscount", 0);
+                  const roomQuantity = getRoomProperty(room, "roomQuantity", 0);
+                  const roomBeds = getRoomProperty(room, "roomBeds", 0);
+                  const roomBaths = getRoomProperty(room, "roomBaths", 0);
+                  const roomImage = getRoomProperty(room, "roomImage", "");
 
                   return (
-                    <TableRow 
+                    <TableRow
                       key={roomId}
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <TableCell className="font-medium text-gray-900">
                         {roomId}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {roomName}
-                      </TableCell>
+                      <TableCell className="font-medium">{roomName}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {roomCategory}
@@ -234,7 +258,13 @@ const fetchRooms = useCallback(async () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${roomQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <span
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
+                            roomQuantity > 0
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
                           {roomQuantity}
                         </span>
                       </TableCell>
@@ -249,7 +279,8 @@ const fetchRooms = useCallback(async () => {
                               className="h-16 w-24 object-cover rounded-md border border-gray-200"
                               loading="lazy"
                               onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/96x64?text=No+Image';
+                                e.target.src =
+                                  "https://via.placeholder.com/96x64?text=No+Image";
                               }}
                             />
                           </div>
@@ -293,9 +324,12 @@ const fetchRooms = useCallback(async () => {
         ) : (
           <div className="text-center py-12">
             <ImageIcon className="h-12 w-12 mx-auto text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No rooms found</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              No rooms found
+            </h3>
             <p className="mt-2 text-gray-600 max-w-md mx-auto">
-              Get started by adding your first room. Rooms will appear here once added.
+              Get started by adding your first room. Rooms will appear here once
+              added.
             </p>
             <div className="mt-6">
               <AddRoom onRoomAdded={handleRoomAdded} />
@@ -308,7 +342,7 @@ const fetchRooms = useCallback(async () => {
       {rooms.length > 0 && (
         <div className="mt-6 flex justify-between items-center text-sm text-gray-600">
           <div>
-            Showing {rooms.length} room{rooms.length !== 1 ? 's' : ''}
+            Showing {rooms.length} room{rooms.length !== 1 ? "s" : ""}
           </div>
           {/* Add pagination controls here if your API supports it */}
         </div>

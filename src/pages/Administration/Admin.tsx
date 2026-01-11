@@ -7,22 +7,20 @@ export default function Admin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   
-  // Check if admin is authenticated - check BOTH storage locations
+  
   const admin = JSON.parse(
     localStorage.getItem("admin") || 
     sessionStorage.getItem("admin") || 
     "null"
   );
   
-  // console.log("=== ADMIN COMPONENT DEBUG ===");
-  // console.log("Admin from storage:", admin);
-  // console.log("Admin token exists?", !!admin?.token);
+  
 
   useEffect(() => {
     // console.log("Admin useEffect running");
     setLoading(false);
     
-    // Optional: Periodic check for session expiry
+    
     const interval = setInterval(() => {
       const currentAdmin = JSON.parse(
         localStorage.getItem("admin") || 
@@ -36,12 +34,12 @@ export default function Admin() {
     }, 60000);
     
     return () => {
-      // console.log("Admin useEffect cleanup");
+      
       clearInterval(interval);
     };
   }, [navigate]);
 
-  // Show loading while checking
+ 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -53,13 +51,12 @@ export default function Admin() {
     );
   }
 
-  // Redirect to login if not authenticated as ADMIN
+ 
   if (!admin?.token) {
-    // console.log("Redirect condition met: No admin token");
+   
     return <Navigate to="/admin/login" replace />;
   }
 
-  // console.log("Rendering admin layout with Outlet");
 
   return (
     <div className="flex h-screen bg-gray-50">

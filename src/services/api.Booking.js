@@ -41,17 +41,83 @@ export const confirmPayment = async (bookingId) => {
 };
 
 // Get bookings by user ID
+// export const getBookingsByUserId = async (userId) => {
+//     try {
+//         const response = await fetch(`${API_URL}/bookings/user/${userId}`);
+        
+//         if (!response.ok) {
+//             throw new Error(`Failed to fetch bookings: ${response.status}`);
+//         }
+        
+//         return await response.json();
+//     } catch (error) {
+//         console.error("Error fetching bookings:", error);
+//         throw error;
+//     }
+// };
+
+// Get bookings by user ID
+// Get bookings by user ID - FIXED VERSION
 export const getBookingsByUserId = async (userId) => {
     try {
-        const response = await fetch(`${API_URL}/bookings/user/${userId}`);
+        // Try multiple endpoints since we're not sure which one is correct
+        const endpoints = [
+            `${API_URL}/bookings/customer/${userId}`,
+            `${API_URL}/bookings/user/${userId}`,
+            `${API_URL}/customers/${userId}/bookings`
+        ];
         
-        if (!response.ok) {
-            throw new Error(`Failed to fetch bookings: ${response.status}`);
+        let lastError = null;
+        
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`🔗 Trying endpoint: ${endpoint}`);
+                
+                const response = await fetch(endpoint);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`✅ Success with endpoint: ${endpoint}`);
+                    console.log(`📊 Found ${data.length || 0} bookings`);
+                    
+                    // Validate the data belongs to this customer
+                    if (data && data.length > 0) {
+                        const firstBooking = data[0];
+                        if (firstBooking.customerId && firstBooking.customerId !== parseInt(userId)) {
+                            console.warn(`⚠️ WARNING: Booking belongs to customer ${firstBooking.customerId}, not ${userId}`);
+                        }
+                    }
+                    
+                    return data;
+                } else {
+                    console.log(`❌ Endpoint ${endpoint} returned ${response.status}`);
+                }
+            } catch (error) {
+                lastError = error;
+                console.log(`❌ Endpoint ${endpoint} failed: ${error.message}`);
+            }
         }
         
-        return await response.json();
+        // If all endpoints failed, try to fetch all and filter
+        console.log("🔄 All endpoints failed, trying to fetch all bookings and filter...");
+        const allBookingsResponse = await fetch(`${API_URL}/bookings`);
+        if (allBookingsResponse.ok) {
+            const allBookings = await allBookingsResponse.json();
+            
+            // Filter by customer ID
+            const customerBookings = allBookings.filter(booking => 
+                booking.customerId === parseInt(userId) ||
+                booking.userId === parseInt(userId)
+            );
+            
+            console.log(`📊 Filtered ${customerBookings.length} bookings for customer ${userId}`);
+            return customerBookings;
+        }
+        
+        throw lastError || new Error("Failed to fetch bookings from any endpoint");
+        
     } catch (error) {
-        console.error("Error fetching bookings:", error);
+        console.error("❌ Error fetching bookings:", error);
         throw error;
     }
 };

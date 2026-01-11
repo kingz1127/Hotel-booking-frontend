@@ -255,91 +255,96 @@ export default function AdminBookings() {
   }, [allBookings]);
 
   const updateAutoStatuses = async () => {
-  try {
-    const updatePromises = [];
-    const updatedBookings = [...bookings];
-    const updatedAllBookings = [...allBookings];
-    let hasChanges = false;
-    let roomsReleased = 0;
+    try {
+      const updatePromises = [];
+      const updatedBookings = [...bookings];
+      const updatedAllBookings = [...allBookings];
+      let hasChanges = false;
+      let roomsReleased = 0;
 
-    for (let i = 0; i < updatedBookings.length; i++) {
-      const booking = updatedBookings[i];
-      const oldStatus = booking.status;
-      const newStatus = autoUpdateStatus(booking, updatedAllBookings);
+      for (let i = 0; i < updatedBookings.length; i++) {
+        const booking = updatedBookings[i];
+        const oldStatus = booking.status;
+        const newStatus = autoUpdateStatus(booking, updatedAllBookings);
 
-      if (newStatus) {
-        console.log(`Auto-updating booking #${booking.id}: ${oldStatus} → ${newStatus}`);
-        
-        // Update in local state
-        updatedBookings[i].status = newStatus;
+        if (newStatus) {
+          console.log(
+            `Auto-updating booking #${booking.id}: ${oldStatus} → ${newStatus}`
+          );
 
-        // Update in allBookings array
-        const allBookingIndex = updatedAllBookings.findIndex(
-          (b) => b.id === booking.id
-        );
-        if (allBookingIndex !== -1) {
-          updatedAllBookings[allBookingIndex].status = newStatus;
-        }
+          // Update in local state
+          updatedBookings[i].status = newStatus;
 
-        hasChanges = true;
+          // Update in allBookings array
+          const allBookingIndex = updatedAllBookings.findIndex(
+            (b) => b.id === booking.id
+          );
+          if (allBookingIndex !== -1) {
+            updatedAllBookings[allBookingIndex].status = newStatus;
+          }
 
-        // ✅ Track if room is being released
-        const isReleasing = 
-          (oldStatus === "CONFIRMED" || oldStatus === "CHECKED_IN") &&
-          (newStatus === "CHECKED_OUT" || newStatus === "COMPLETED" || newStatus === "CANCELLED");
-        
-        if (isReleasing) {
-          roomsReleased++;
-        }
+          hasChanges = true;
 
-        // Add to update promises
-        updatePromises.push(
-          updateBookingStatusInBackend(booking.id, newStatus, true).catch(
-            (error) => {
-              console.error(`Failed to update booking ${booking.id}:`, error);
-              return false;
-            }
-          )
-        );
-      }
-    }
+          // ✅ Track if room is being released
+          const isReleasing =
+            (oldStatus === "CONFIRMED" || oldStatus === "CHECKED_IN") &&
+            (newStatus === "CHECKED_OUT" ||
+              newStatus === "COMPLETED" ||
+              newStatus === "CANCELLED");
 
-    if (hasChanges) {
-      // Update state
-      setBookings(updatedBookings);
-      setAllBookings(updatedAllBookings);
-      setFilteredBookings(updatedBookings);
+          if (isReleasing) {
+            roomsReleased++;
+          }
 
-      // Show toast if any updates were made
-      const successfulUpdates = (await Promise.all(updatePromises)).filter(
-        (result) => result === true
-      ).length;
-
-      if (successfulUpdates > 0) {
-        toast.info(
-          <div>
-            <p className="font-bold">Auto-updated {successfulUpdates} booking(s)</p>
-            {roomsReleased > 0 && (
-              <p className="text-sm">{roomsReleased} room(s) now available</p>
-            )}
-          </div>,
-          { autoClose: 3000 }
-        );
-
-        // ✅ Refresh bookings if rooms were released
-        if (roomsReleased > 0) {
-          console.log("✅ Rooms released during auto-update, refreshing...");
-          setTimeout(() => {
-            fetchBookings();
-          }, 1000);
+          // Add to update promises
+          updatePromises.push(
+            updateBookingStatusInBackend(booking.id, newStatus, true).catch(
+              (error) => {
+                console.error(`Failed to update booking ${booking.id}:`, error);
+                return false;
+              }
+            )
+          );
         }
       }
-    }
-  } catch (error) {
-    console.error("Error auto-updating statuses:", error);
-  }
-};
 
+      if (hasChanges) {
+        // Update state
+        setBookings(updatedBookings);
+        setAllBookings(updatedAllBookings);
+        setFilteredBookings(updatedBookings);
+
+        // Show toast if any updates were made
+        const successfulUpdates = (await Promise.all(updatePromises)).filter(
+          (result) => result === true
+        ).length;
+
+        if (successfulUpdates > 0) {
+          toast.info(
+            <div>
+              <p className="font-bold">
+                Auto-updated {successfulUpdates} booking(s)
+              </p>
+              {roomsReleased > 0 && (
+                <p className="text-sm">{roomsReleased} room(s) now available</p>
+              )}
+            </div>,
+            { autoClose: 3000 }
+          );
+
+          // ✅ Refresh bookings if rooms were released
+          if (roomsReleased > 0) {
+            console.log("✅ Rooms released during auto-update, refreshing...");
+            setTimeout(() => {
+              fetchBookings();
+            }, 1000);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error auto-updating statuses:", error);
+    }
+  };
 
   const triggerManualAutoUpdate = async () => {
     try {
@@ -372,14 +377,15 @@ export default function AdminBookings() {
       const admin = JSON.parse(sessionStorage.getItem("admin") || "null");
 
       const response = await fetch(
-  `http://localhost:8080/api/v1/bookings?page=${pagination.page - 1}&size=${pagination.limit}`,
-  {
-        headers: {
-          "Authorization": admin?.token, // ✅ ADD THIS
+        `http://localhost:8080/api/v1/bookings?page=${
+          pagination.page - 1
+        }&size=${pagination.limit}`,
+        {
+          headers: {
+            Authorization: admin?.token, // ✅ ADD THIS
+          },
         }
-      }
-    );
-
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -475,209 +481,214 @@ export default function AdminBookings() {
     }
   };
 
-  
+  const updateBookingStatusInBackend = async (
+    bookingId,
+    newStatus,
+    silent = false
+  ) => {
+    try {
+      const admin = JSON.parse(sessionStorage.getItem("admin") || "null");
 
- const updateBookingStatusInBackend = async (
-  bookingId,
-  newStatus,
-  silent = false
-) => {
-  try {
-    const admin = JSON.parse(sessionStorage.getItem("admin") || "null");
+      console.log("=== API REQUEST DETAILS ===");
+      console.log("Booking ID:", bookingId);
+      console.log("New Status:", newStatus);
+      console.log("Admin Token:", admin?.token ? "Present" : "Missing");
+      console.log(
+        "Endpoint:",
+        `http://localhost:8080/api/v1/bookings/${bookingId}/status`
+      );
+      console.log("Request Body:", { status: newStatus });
 
-    console.log("=== API REQUEST DETAILS ===");
-    console.log("Booking ID:", bookingId);
-    console.log("New Status:", newStatus);
-    console.log("Admin Token:", admin?.token ? "Present" : "Missing");
-    console.log(
-      "Endpoint:",
-      `http://localhost:8080/api/v1/bookings/${bookingId}/status`
-    );
-    console.log("Request Body:", { status: newStatus });
-
-    const response = await fetch(
-      `http://localhost:8080/api/v1/bookings/${bookingId}/status`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: admin?.token,
-          // Authorization: `Bearer ${admin?.token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      }
-    );
-
-    console.log("Response Status:", response.status);
-    console.log("Response OK:", response.ok);
-
-    if (response.ok) {
-      const responseData = await response.json();
-      console.log("✅ Response Data:", responseData);
-
-      // ✅ Check if room availability was updated
-      if (responseData.room) {
-        console.log("Room availability updated:", {
-          roomId: responseData.room.id,
-          availableRooms: responseData.room.availableRooms,
-          totalRooms: responseData.room.roomQuantity
-        });
-      }
-
-      if (!silent) {
-        toast.success("Booking status updated successfully");
-      }
-      return true;
-    } else {
-      // Try to get error message from response
-      let errorMessage = "Failed to update status";
-      try {
-        const errorData = await response.json();
-        console.log("❌ Error Response:", errorData);
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
-        const errorText = await response.text();
-        console.log("❌ Error Text:", errorText);
-        errorMessage = errorText || errorMessage;
-      }
-
-      throw new Error(`${response.status}: ${errorMessage}`);
-    }
-  } catch (error) {
-    console.error("❌ Error updating booking status:", error);
-    if (!silent) {
-      toast.error(`Failed to update booking status: ${error.message}`);
-    }
-    return false;
-  }
-};
-
-  
-// ✅ FIXED: Update booking status with room availability refresh
-const updateBookingStatus = async (bookingId, newStatus) => {
-  const oldBooking = bookings.find(b => b.id === bookingId);
-  const oldStatus = oldBooking?.status;
-
-  if (
-    !window.confirm(
-      `Change booking status to ${newStatus.replace("_", " ")}?`
-    )
-  ) {
-    return;
-  }
-
-  console.log("=== STATUS UPDATE ===");
-  console.log(`Booking #${bookingId}: ${oldStatus} → ${newStatus}`);
-
-  const success = await updateBookingStatusInBackend(bookingId, newStatus);
-
-  if (success) {
-    // Update local state
-    const updatedBookings = bookings.map((booking) =>
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    );
-
-    setBookings(updatedBookings);
-    setFilteredBookings(updatedBookings);
-
-    // Also update in allBookings for continuity checks
-    const updatedAllBookings = allBookings.map((booking) =>
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    );
-
-    setAllBookings(updatedAllBookings);
-
-    // ✅ CRITICAL FIX: Check if room should be released
-    const shouldReleaseRoom = 
-      (oldStatus === "CONFIRMED" || oldStatus === "CHECKED_IN") &&
-      (newStatus === "CHECKED_OUT" || newStatus === "COMPLETED" || newStatus === "CANCELLED");
-
-    if (shouldReleaseRoom) {
-      console.log("✅ Room should be released - refetching bookings and rooms");
-      
-      // Show success message
-      toast.success(
-        <div>
-          <p className="font-bold">Status Updated!</p>
-          <p className="text-sm">Room is now available for new bookings</p>
-        </div>,
-        { autoClose: 3000 }
+      const response = await fetch(
+        `http://localhost:8080/api/v1/bookings/${bookingId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: admin?.token,
+            // Authorization: `Bearer ${admin?.token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
       );
 
-      // ✅ Refresh the bookings list after a short delay
-      // This allows the backend to update room availability
-      setTimeout(() => {
-        fetchBookings();
-      }, 500);
-    } else {
-      // Check for auto-updates after manual status change
-      const updatedBooking = updatedBookings.find((b) => b.id === bookingId);
-      if (updatedBooking) {
-        const autoStatus = autoUpdateStatus(updatedBooking, updatedAllBookings);
-        if (autoStatus && autoStatus !== newStatus) {
-          setTimeout(() => {
-            toast.info(
-              `Status will auto-update to ${autoStatus.replace(
-                "_",
-                " "
-              )} based on dates`
-            );
-          }, 500);
+      console.log("Response Status:", response.status);
+      console.log("Response OK:", response.ok);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("✅ Response Data:", responseData);
+
+        // ✅ Check if room availability was updated
+        if (responseData.room) {
+          console.log("Room availability updated:", {
+            roomId: responseData.room.id,
+            availableRooms: responseData.room.availableRooms,
+            totalRooms: responseData.room.roomQuantity,
+          });
+        }
+
+        if (!silent) {
+          toast.success("Booking status updated successfully");
+        }
+        return true;
+      } else {
+        // Try to get error message from response
+        let errorMessage = "Failed to update status";
+        try {
+          const errorData = await response.json();
+          console.log("❌ Error Response:", errorData);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (e) {
+          const errorText = await response.text();
+          console.log("❌ Error Text:", errorText);
+          errorMessage = errorText || errorMessage;
+        }
+
+        throw new Error(`${response.status}: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("❌ Error updating booking status:", error);
+      if (!silent) {
+        toast.error(`Failed to update booking status: ${error.message}`);
+      }
+      return false;
+    }
+  };
+
+  // ✅ FIXED: Update booking status with room availability refresh
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    const oldBooking = bookings.find((b) => b.id === bookingId);
+    const oldStatus = oldBooking?.status;
+
+    if (
+      !window.confirm(
+        `Change booking status to ${newStatus.replace("_", " ")}?`
+      )
+    ) {
+      return;
+    }
+
+    console.log("=== STATUS UPDATE ===");
+    console.log(`Booking #${bookingId}: ${oldStatus} → ${newStatus}`);
+
+    const success = await updateBookingStatusInBackend(bookingId, newStatus);
+
+    if (success) {
+      // Update local state
+      const updatedBookings = bookings.map((booking) =>
+        booking.id === bookingId ? { ...booking, status: newStatus } : booking
+      );
+
+      setBookings(updatedBookings);
+      setFilteredBookings(updatedBookings);
+
+      // Also update in allBookings for continuity checks
+      const updatedAllBookings = allBookings.map((booking) =>
+        booking.id === bookingId ? { ...booking, status: newStatus } : booking
+      );
+
+      setAllBookings(updatedAllBookings);
+
+      // ✅ CRITICAL FIX: Check if room should be released
+      const shouldReleaseRoom =
+        (oldStatus === "CONFIRMED" || oldStatus === "CHECKED_IN") &&
+        (newStatus === "CHECKED_OUT" ||
+          newStatus === "COMPLETED" ||
+          newStatus === "CANCELLED");
+
+      if (shouldReleaseRoom) {
+        console.log(
+          "✅ Room should be released - refetching bookings and rooms"
+        );
+
+        // Show success message
+        toast.success(
+          <div>
+            <p className="font-bold">Status Updated!</p>
+            <p className="text-sm">Room is now available for new bookings</p>
+          </div>,
+          { autoClose: 3000 }
+        );
+
+        // ✅ Refresh the bookings list after a short delay
+        // This allows the backend to update room availability
+        setTimeout(() => {
+          fetchBookings();
+        }, 500);
+      } else {
+        // Check for auto-updates after manual status change
+        const updatedBooking = updatedBookings.find((b) => b.id === bookingId);
+        if (updatedBooking) {
+          const autoStatus = autoUpdateStatus(
+            updatedBooking,
+            updatedAllBookings
+          );
+          if (autoStatus && autoStatus !== newStatus) {
+            setTimeout(() => {
+              toast.info(
+                `Status will auto-update to ${autoStatus.replace(
+                  "_",
+                  " "
+                )} based on dates`
+              );
+            }, 500);
+          }
         }
       }
     }
-  }
-};
+  };
 
   const applyFilters = () => {
-  let filtered = [...bookings];
+    let filtered = [...bookings];
 
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase();
-    filtered = filtered.filter(
-      (booking) =>
-        (booking.userName && booking.userName.toLowerCase().includes(term)) ||
-        (booking.userEmail && booking.userEmail.toLowerCase().includes(term)) ||
-        (booking.id && booking.id.toString().includes(term)) ||
-        (booking.roomName && booking.roomName.toLowerCase().includes(term))
-    );
-  }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (booking) =>
+          (booking.userName && booking.userName.toLowerCase().includes(term)) ||
+          (booking.userEmail &&
+            booking.userEmail.toLowerCase().includes(term)) ||
+          (booking.id && booking.id.toString().includes(term)) ||
+          (booking.roomName && booking.roomName.toLowerCase().includes(term))
+      );
+    }
 
-  if (statusFilter !== "ALL") {
-    filtered = filtered.filter((booking) => booking.status === statusFilter);
-  }
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter((booking) => booking.status === statusFilter);
+    }
 
-  if (dateFilter) {
-    filtered = filtered.filter((booking) => {
-      const bookingDate = booking.checkInDate || booking.bookingDate;
-      return bookingDate === dateFilter;
-    });
-  }
+    if (dateFilter) {
+      filtered = filtered.filter((booking) => {
+        const bookingDate = booking.checkInDate || booking.bookingDate;
+        return bookingDate === dateFilter;
+      });
+    }
 
-  // NEW: Apply booking type filter
-  if (bookingTypeFilter === "USER") {
-    filtered = filtered.filter(booking => booking.userId);
-  } else if (bookingTypeFilter === "WALKIN") {
-    filtered = filtered.filter(booking => !booking.userId);
-  }
+    // NEW: Apply booking type filter
+    if (bookingTypeFilter === "USER") {
+      filtered = filtered.filter((booking) => booking.userId);
+    } else if (bookingTypeFilter === "WALKIN") {
+      filtered = filtered.filter((booking) => !booking.userId);
+    }
 
-  // Existing overdue filter
-  if (overdueFilter) {
-    filtered = filtered.filter(
-      (booking) =>
-        booking.status === "CHECKED_IN" &&
-        isCheckoutDatePassed(booking.checkOutDate)
-    );
-  }
+    // Existing overdue filter
+    if (overdueFilter) {
+      filtered = filtered.filter(
+        (booking) =>
+          booking.status === "CHECKED_IN" &&
+          isCheckoutDatePassed(booking.checkOutDate)
+      );
+    }
 
-  setFilteredBookings(filtered);
-  setPagination((prev) => ({
-    ...prev,
-    page: 1,
-    total: filtered.length,
-    totalPages: Math.ceil(filtered.length / prev.limit),
-  }));
-};
+    setFilteredBookings(filtered);
+    setPagination((prev) => ({
+      ...prev,
+      page: 1,
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / prev.limit),
+    }));
+  };
 
   const resetFilters = () => {
     setSearchTerm("");
@@ -1010,7 +1021,6 @@ const updateBookingStatus = async (bookingId, newStatus) => {
                       Room & Dates
                     </th>
 
-
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Amount
                     </th>
@@ -1074,10 +1084,10 @@ const updateBookingStatus = async (bookingId, newStatus) => {
                           </div>
 
                           {booking.assignedRoomNumber && (
-    <div className="text-xs font-medium text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded">
-      Room #{booking.assignedRoomNumber}
-    </div>
-  )}
+                            <div className="text-xs font-medium text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded">
+                              Room #{booking.assignedRoomNumber}
+                            </div>
+                          )}
                           <div className="text-xs text-gray-700">
                             <Calendar className="inline h-3 w-3 mr-1" />
                             {formatDate(booking.checkInDate)} →{" "}

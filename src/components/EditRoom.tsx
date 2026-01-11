@@ -42,7 +42,7 @@ const ROOM_CATEGORIES = [
 export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
-  const [imageFile, setImageFile] = useState(null); // Track the file separately
+  const [imageFile, setImageFile] = useState(null); 
   const [originalImage, setOriginalImage] = useState(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -80,7 +80,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
       roomBaths: roomData.roomBaths || 1,
     });
     
-    // Store original image
+    
     if (roomData.roomImage) {
       setImagePreview(roomData.roomImage);
       setOriginalImage(roomData.roomImage);
@@ -89,7 +89,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
       setOriginalImage(null);
     }
     
-    // Clear any existing file
+    
     setImageFile(null);
   };
 
@@ -107,7 +107,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
       return;
     }
 
-    setImageFile(file); // Store the file
+    setImageFile(file); 
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result);
@@ -117,13 +117,13 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
 
   const removeImage = () => {
     setImageFile(null);
-    setImagePreview(originalImage); // Reset to original image
+    setImagePreview(originalImage); 
   };
 
   async function onSubmit(data) {
     setIsLoading(true);
     
-    // Prepare room data (excluding image)
+    
     const roomData = {
       roomName: data.roomName,
       roomDescription: data.roomDescription,
@@ -217,7 +217,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
           )}
         </div>
 
-        {/* Form */}
+        
         <div className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -237,7 +237,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
                 
-                {/* Category */}
+               
                 <FormField
                   control={form.control}
                   name="roomCategory"
@@ -263,7 +263,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Price */}
+               
                 <FormField
                   control={form.control}
                   name="roomPrice"
@@ -283,7 +283,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Discount */}
+                
                 <FormField
                   control={form.control}
                   name="roomDiscount"
@@ -305,7 +305,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Quantity */}
+                
                 <FormField
                   control={form.control}
                   name="roomQuantity"
@@ -326,7 +326,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Measurements */}
+               
                 <FormField
                   control={form.control}
                   name="roomMeasurements"
@@ -347,7 +347,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Beds */}
+               
                 <FormField
                   control={form.control}
                   name="roomBeds"
@@ -368,7 +368,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                   )}
                 />
 
-                {/* Baths */}
+                
                 <FormField
                   control={form.control}
                   name="roomBaths"
@@ -390,7 +390,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                 />
               </div>
 
-              {/* Description */}
+             
               <FormField
                 control={form.control}
                 name="roomDescription"
@@ -409,7 +409,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                 )}
               />
 
-              {/* Image Upload */}
+             
               <div className="space-y-2">
                 <FormLabel>Room Image</FormLabel>
                 <div
@@ -474,7 +474,7 @@ export default function EditRoom({ room, isOpen, onClose, onRoomUpdated }) {
                 </p>
               </div>
 
-              {/* Buttons */}
+              
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"

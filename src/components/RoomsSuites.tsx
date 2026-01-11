@@ -1,13 +1,13 @@
+
+
+
 import { useState, useEffect } from "react";
 import { TbRulerMeasure } from "react-icons/tb";
 import {
   FaBath,
   FaBed,
   FaTimes,
-  FaTag,
-  FaRuler,
   FaUsers,
-  FaCalendarCheck,
 } from "react-icons/fa";
 import { Card } from "./ui/card";
 import {
@@ -18,7 +18,7 @@ import {
   CarouselPrevious,
 } from "./ui/carousel";
 import { getAllRooms } from "../services/api.room.js";
-import { Loader2, ChevronRight, Star, Check } from "lucide-react";
+import { Loader2, ChevronRight, Check, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -34,33 +34,100 @@ export default function RoomsSuites() {
     fetchRooms();
   }, []);
 
-  // Update the fetchRooms function
-const fetchRooms = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const data = await getAllRooms(0, 20);
-    console.log("Fetched rooms for display:", data);
+  // FIXED: Match WalkInBooking's availability calculation
+  const fetchRooms = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getAllRooms(0, 20);
+      console.log("Fetched rooms for display:", data);
 
-    // Process rooms to ensure availableRooms is calculated correctly
-    const processedRooms = (data || []).map(room => ({
-      ...room,
-      // Ensure availableRooms is calculated as total - booked
-      availableRooms: Math.max(0, 
-        (room.roomQuantity || 0) - (room.bookedRooms || 0)
-      )
-    }));
+      // FIXED: Use the SAME availability logic as WalkInBooking
+      const processedRooms = (data || []).map(room => {
+        const roomQuantity = room.roomQuantity || 0;
+        const availableRooms = room.availableRooms || 0;
+        const isAvailableFlag = room.isAvailable !== false;
+        
+        // Match WalkInBooking logic:
+        // 1. Room has quantity > 0
+        // 2. availableRooms > 0
+        // 3. isAvailable flag is true
+        const isActuallyAvailable = availableRooms > 0 && roomQuantity > 0 && isAvailableFlag;
+        
+        // Determine availability status exactly like WalkInBooking
+        let availabilityStatus = 'available';
+        let statusText = '';
+        let badgeClass = '';
+        
+        if (roomQuantity <= 0) {
+          availabilityStatus = 'no_inventory';
+          statusText = 'No Inventory';
+          badgeClass = 'bg-gray-100 text-gray-800';
+        } else if (!isActuallyAvailable) {
+          availabilityStatus = 'fully_booked';
+          statusText = 'Fully Booked';
+          badgeClass = 'bg-red-100 text-red-800 border border-red-200';
+        } else if (availableRooms > 0) {
+          availabilityStatus = 'available';
+          statusText = `${availableRooms} available`;
+          badgeClass = 'bg-green-100 text-green-800 border border-green-200';
+          
+          // Add "limited" status if low availability (like WalkInBooking might show)
+          if (availableRooms <= 2) {
+            statusText = `${availableRooms} left (Limited)`;
+            badgeClass = 'bg-orange-100 text-orange-800 border border-orange-200';
+          }
+        } else {
+          availabilityStatus = 'fully_booked';
+          statusText = 'Fully Booked';
+          badgeClass = 'bg-red-100 text-red-800 border border-red-200';
+        }
+        
+        return {
+          ...room,
+          availableRooms: availableRooms,
+          _roomQuantity: roomQuantity,
+          _isAvailable: isActuallyAvailable,
+          _availabilityStatus: availabilityStatus,
+          _statusText: statusText,
+          _badgeClass: badgeClass,
+          // Add these fields to match WalkInBooking exactly
+          _needsFix: availableRooms > 0 && !isAvailableFlag,
+          _shouldBeAvailable: roomQuantity > 0,
+          _actualAvailability: isActuallyAvailable
+        };
+      });
 
-    const limitedRooms = processedRooms.slice(0, 6);
-    setRooms(limitedRooms);
-  } catch (error) {
-    console.error("Failed to fetch rooms:", error);
-    setError("Failed to load rooms. Please try again later.");
-    setRooms([]);
-  } finally {
-    setLoading(false);
-  }
-};
+      // Filter out rooms with no inventory (like WalkInBooking does)
+      const roomsWithInventory = processedRooms.filter(room => room._roomQuantity > 0);
+      
+      const limitedRooms = roomsWithInventory.slice(0, 6);
+      setRooms(limitedRooms);
+      
+      // Log to compare with WalkInBooking
+      console.log("=== ROOMS SUITES AVAILABILITY ===");
+      console.log("Total rooms with inventory:", roomsWithInventory.length);
+      console.log("Available rooms:", roomsWithInventory.filter(r => r._actualAvailability).length);
+      console.log("Fully booked:", roomsWithInventory.filter(r => !r._actualAvailability).length);
+      
+      roomsWithInventory.forEach(room => {
+        console.log(
+          `Room ${room.id} - ${room.roomName}: ` +
+          `Quantity: ${room.roomQuantity}, ` +
+          `Available: ${room.availableRooms}, ` +
+          `Status: ${room._statusText}, ` +
+          `Actually Available: ${room._actualAvailability}`
+        );
+      });
+      
+    } catch (error) {
+      console.error("Failed to fetch rooms:", error);
+      setError("Failed to load rooms. Please try again later.");
+      setRooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Format price with discount calculation
   const formatPrice = (price, discount = 0) => {
@@ -93,6 +160,46 @@ const fetchRooms = async () => {
     return room[property] !== undefined ? room[property] : defaultValue;
   };
 
+  // Get availability status text
+  const getAvailabilityText = (room) => {
+    if (room._statusText) {
+      return room._statusText;
+    }
+    
+    const availableRooms = getRoomProperty(room, "availableRooms", 0);
+    const roomQuantity = getRoomProperty(room, "roomQuantity", 0);
+    
+    if (roomQuantity <= 0) {
+      return 'No Inventory';
+    } else if (availableRooms <= 0) {
+      return 'Fully Booked';
+    } else if (availableRooms <= 2) {
+      return `${availableRooms} left (Limited)`;
+    } else {
+      return `${availableRooms} available`;
+    }
+  };
+
+  // Get availability badge color
+  const getAvailabilityBadgeClass = (room) => {
+    if (room._badgeClass) {
+      return room._badgeClass;
+    }
+    
+    const availableRooms = getRoomProperty(room, "availableRooms", 0);
+    const roomQuantity = getRoomProperty(room, "roomQuantity", 0);
+    
+    if (roomQuantity <= 0) {
+      return 'bg-gray-100 text-gray-800';
+    } else if (availableRooms <= 0) {
+      return 'bg-red-100 text-red-800 border border-red-200';
+    } else if (availableRooms <= 2) {
+      return 'bg-orange-100 text-orange-800 border border-orange-200';
+    } else {
+      return 'bg-green-100 text-green-800 border border-green-200';
+    }
+  };
+
   // Handle room click
   const handleRoomClick = (room) => {
     setSelectedRoom(room);
@@ -107,165 +214,117 @@ const fetchRooms = async () => {
     document.body.style.overflow = "unset";
   };
 
-  // Check if user is logged in as CUSTOMER (using sessionStorage)
- // Improved Check if user is logged in as CUSTOMER
-// Improved login check function
-const isCustomerLoggedIn = () => {
-  try {
-    const customerToken = sessionStorage.getItem("customerToken");
-    const customerData = sessionStorage.getItem("customer");
+  // Check if room is available for booking (same as WalkInBooking)
+  const isRoomAvailable = (room) => {
+    if (!room) return false;
+    
+    // Use the same logic as WalkInBooking
+    const roomQuantity = getRoomProperty(room, "roomQuantity", 0);
+    const availableRooms = getRoomProperty(room, "availableRooms", 0);
+    const isAvailableFlag = getRoomProperty(room, "isAvailable", true);
+    
+    // Exactly the same logic as WalkInBooking's _actualAvailability
+    return roomQuantity > 0 && availableRooms > 0 && isAvailableFlag !== false;
+  };
 
-    console.log("=== CUSTOMER LOGIN CHECK ===");
-    console.log("customerToken:", customerToken);
-    console.log("customer data:", customerData);
-
-    // If no token and no customer data, definitely not logged in
-    if (!customerToken && !customerData) {
-      console.log("❌ No credentials found");
-      return false;
+  // Enhanced Book Now handler
+  const handleBookNow = (room) => {
+    console.log("=== BOOK NOW CLICKED ===");
+    console.log("Room:", room.roomName, "ID:", room.id);
+    
+    // Check availability using same logic as WalkInBooking
+    if (!isRoomAvailable(room)) {
+      console.log("❌ Room not available for booking");
+      toast.error(
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <span>This room is no longer available. Please select another room.</span>
+        </div>,
+        {
+          position: "top-center",
+          autoClose: 4000,
+          icon: false,
+        }
+      );
+      closeModal();
+      return;
     }
 
-    // Parse customer object if it exists
-    let parsedCustomer = null;
-    if (customerData) {
-      try {
-        parsedCustomer = JSON.parse(customerData);
-        console.log("Parsed customer:", parsedCustomer);
-      } catch (e) {
-        console.error("Error parsing customer:", e);
-        return false;
+    // Check for limited availability
+    const availableRooms = getRoomProperty(room, "availableRooms", 0);
+    if (availableRooms <= 2) {
+      toast.warning(
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-semibold">Limited Availability!</span>
+          </div>
+          <p className="text-sm mt-1">Only {availableRooms} room(s) left</p>
+        </div>,
+        {
+          position: "top-center",
+          autoClose: 5000,
+          icon: false,
+        }
+      );
+    }
+
+    // Store comprehensive room details for after login
+    const roomDetails = {
+      id: room.id,
+      name: room.roomName,
+      category: room.roomCategory,
+      price: room.roomPrice,
+      discount: room.roomDiscount,
+      availableRooms: availableRooms,
+      roomQuantity: room.roomQuantity,
+      isAvailable: room.isAvailable,
+      image: room.roomImage,
+      beds: room.roomBeds,
+      baths: room.roomBaths,
+      size: room.roomMeasurements
+    };
+
+    sessionStorage.setItem("selectedRoomDetails", JSON.stringify(roomDetails));
+    sessionStorage.setItem("redirectAfterLogin", `/booking/${room.id}`);
+    sessionStorage.setItem("requiresLoginForBooking", "true");
+    
+    console.log("Room details stored in sessionStorage:", roomDetails);
+
+    // Show login prompt with room details
+    toast.info(
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-blue-500" />
+          <span className="font-semibold">Login Required</span>
+        </div>
+        <p className="text-sm mt-1">
+          Please login to book "<strong>{room.roomName}</strong>"
+        </p>
+        <p className="text-xs text-gray-600 mt-1">
+          Price: {formatPrice(room.roomPrice, room.roomDiscount)}/night
+        </p>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: 4000,
+        icon: false,
       }
-    }
-
-    // Check for valid token (either standalone or in customer object)
-    const hasValidToken = !!(
-      customerToken || 
-      (parsedCustomer && parsedCustomer.token)
     );
-    
-    // Check for customer role
-    const isCustomerRole = parsedCustomer?.role === "CUSTOMER";
-    
-    console.log("Has valid token?", hasValidToken);
-    console.log("Is CUSTOMER role?", isCustomerRole);
-    
-    // Must have BOTH valid token AND customer role
-    const isLoggedIn = hasValidToken && isCustomerRole;
-    console.log("Final login status:", isLoggedIn);
-    
-    return isLoggedIn;
-  } catch (error) {
-    console.error("Error in isCustomerLoggedIn:", error);
-    return false;
-  }
-};
 
-// Enhanced Book Now handler with strict checks
-// Simplified Book Now handler - ALWAYS go to login
-const handleBookNow = (room) => {
-  console.log("=== BOOK NOW CLICKED ===");
-  console.log("Room:", room.roomName, "ID:", room.id);
-  
-  // Check availability first
-  const availableRooms = getRoomProperty(room, "availableRooms", 0);
-  if (availableRooms <= 0) {
-    console.log("❌ Room not available");
-    toast.error("This room is no longer available. Please select another room.", {
-      position: "top-center",
-      autoClose: 3000,
-    });
     closeModal();
-    return;
-  }
-
-  // Store room details for after login
-  sessionStorage.setItem("selectedRoomId", room.id);
-  sessionStorage.setItem("redirectAfterLogin", `/booking/${room.id}`);
-  sessionStorage.setItem("selectedRoomName", room.roomName);
-  sessionStorage.setItem("selectedRoomPrice", room.roomPrice?.toString() || "0");
-  
-  console.log("Stored in sessionStorage for login redirect:", {
-    roomId: room.id,
-    roomName: room.roomName
-  });
-
-  // ALWAYS redirect to login page
-  console.log("Redirecting to login page...");
-  
-  toast.info(`Please login to book "${room.roomName}"`, {
-    position: "top-center",
-    autoClose: 3000,
-  });
-
-  closeModal();
-  
-  // Navigate to login after a short delay
-  setTimeout(() => {
-    navigate("/login");
-  }, 100);
-};
-
-  const checkRoomAvailability = async (roomId) => {
-  try {
-    // If you have an API endpoint to check single room
-    const response = await fetch(`/api/rooms/${roomId}/availability`);
-    const data = await response.json();
-    return data.availableRooms > 0;
-  } catch (error) {
-    console.error("Error checking room availability:", error);
-    return false;
-  }
-};
-
-  // Handle Book Now button click
-  // Handle Book Now button click
-// const handleBookNow = (room) => {
-//   console.log("=== BOOK NOW CLICKED ===");
-//   console.log("Room:", room.roomName, "ID:", room.id);
-  
-//   // First, check availability
-//   if (getRoomProperty(room, "availableRooms", 0) <= 0) {
-//     toast.error("This room is no longer available. Please select another room.", {
-//       position: "top-center",
-//       autoClose: 3000,
-//     });
-//     closeModal();
-//     return;
-//   }
-
-//   // Store room ID in sessionStorage for after login
-//   sessionStorage.setItem("selectedRoomId", room.id);
-//   sessionStorage.setItem("redirectAfterLogin", `/booking/${room.id}`);
-  
-//   // Add room details for display on login page
-//   sessionStorage.setItem("selectedRoomName", room.roomName);
-//   sessionStorage.setItem("selectedRoomPrice", room.roomPrice);
-
-//   console.log("Session storage set for room:", {
-//     selectedRoomId: sessionStorage.getItem("selectedRoomId"),
-//     redirectAfterLogin: sessionStorage.getItem("redirectAfterLogin")
-//   });
-
-//   // ALWAYS check login status first
-//   const isLoggedIn = isCustomerLoggedIn();
-//   console.log("User logged in?", isLoggedIn);
-
-//   if (isLoggedIn) {
-//     console.log("✅ Customer is logged in, navigating to booking");
-//     navigate(`/booking/${room.id}`);
-//   } else {
-//     console.log("❌ Customer NOT logged in, redirecting to login");
-
-//     // Show toast message
-//     toast.info(`Please login as customer to book "${room.roomName}"`, {
-//       position: "top-center",
-//       autoClose: 3000,
-//     });
-
-//     // Redirect to login page
-//     navigate("/login");
-//   }
-// };
+    
+    // Navigate to login page
+    setTimeout(() => {
+      navigate("/login", { 
+        state: { 
+          fromBooking: true,
+          roomName: room.roomName,
+          roomPrice: formatPrice(room.roomPrice, room.roomDiscount)
+        }
+      });
+    }, 100);
+  };
 
   // Prevent modal close when clicking inside modal content
   const handleModalClick = (e) => {
@@ -277,7 +336,7 @@ const handleBookNow = (room) => {
       <div className="flex flex-col items-center justify-center mt-10 mb-10 min-h-[400px] px-4">
         <Loader2 className="h-12 w-12 animate-spin text-[#c1bd3f]" />
         <p className="mt-4 text-gray-600 text-sm sm:text-base">
-          Loading rooms...
+          Loading available rooms...
         </p>
       </div>
     );
@@ -323,6 +382,26 @@ const handleBookNow = (room) => {
           Luxury Rooms & Suites
         </p>
 
+        {/* Availability Legend */}
+        <div className="mb-6 flex flex-wrap justify-center gap-3 text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span>Available</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span>Limited</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span>Fully Booked</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+            <span>No Inventory</span>
+          </div>
+        </div>
+
         <div className="w-full max-w-7xl">
           <Carousel className="w-full">
             <CarouselContent className="-ml-2 sm:-ml-4 gap-3 sm:gap-5">
@@ -351,6 +430,9 @@ const handleBookNow = (room) => {
 
                 const categoryLabel = getCategoryLabel(roomCategory);
                 const displayPrice = formatPrice(roomPrice, roomDiscount);
+                const isAvailable = isRoomAvailable(room);
+                const availabilityText = getAvailabilityText(room);
+                const availabilityBadgeClass = getAvailabilityBadgeClass(room);
 
                 return (
                   <CarouselItem
@@ -365,7 +447,7 @@ const handleBookNow = (room) => {
                     "
                   >
                     <Card
-                      className="
+                      className={`
                         p-2 
                         w-full 
                         max-w-[16rem] 
@@ -377,7 +459,8 @@ const handleBookNow = (room) => {
                         duration-300 
                         cursor-pointer 
                         hover:scale-[1.02]
-                      "
+                        ${!isAvailable ? 'opacity-80' : ''}
+                      `}
                       onClick={() => handleRoomClick(room)}
                     >
                       {/* Room Image */}
@@ -430,6 +513,15 @@ const handleBookNow = (room) => {
                             -{roomDiscount}%
                           </div>
                         )}
+
+                        {/* Overlay for fully booked rooms */}
+                        {!isAvailable && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-tl-xl rounded-tr-xl">
+                            <span className="text-white font-bold text-lg px-4 py-2 bg-red-600/80 rounded-lg">
+                              Fully Booked
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Room Details */}
@@ -458,6 +550,11 @@ const handleBookNow = (room) => {
                         <p className="text-xs sm:text-sm text-gray-500 mb-2">
                           {roomCategory}
                         </p>
+
+                        {/* Availability Badge */}
+                        <div className={`inline-block px-2 py-1 rounded text-xs mb-2 ${availabilityBadgeClass}`}>
+                          {availabilityText}
+                        </div>
 
                         <hr className="my-2" />
 
@@ -488,34 +585,6 @@ const handleBookNow = (room) => {
                           </p>
                         </div>
 
-                        {/* Quantity Available */}
-                        <div className="mt-2 sm:mt-3 text-center">
-                          {/* <span className={`inline-block px-2 py-1 rounded text-xs ${
-                            getRoomProperty(room, 'roomQuantity', 0) > 0 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {getRoomProperty(room, 'roomQuantity', 0) > 0 
-                              ? `${getRoomProperty(room, 'roomQuantity')} available` 
-                              : 'Sold out'}
-                          </span> */}
-
-                          <span
-                            className={`inline-block px-2 py-1 rounded text-xs ${
-                              getRoomProperty(room, "availableRooms", 0) > 0
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {getRoomProperty(room, "availableRooms", 0) > 0
-                              ? `${getRoomProperty(
-                                  room,
-                                  "availableRooms"
-                                )} available`
-                              : "Sold out"}
-                          </span>
-                        </div>
-
                         {/* View Details Button */}
                         <div className="mt-3 sm:mt-4 text-center">
                           <button className="text-[#c1bd3f] text-xs sm:text-sm font-medium hover:text-[#a8a535] flex items-center justify-center gap-1 mx-auto">
@@ -534,11 +603,23 @@ const handleBookNow = (room) => {
           </Carousel>
         </div>
 
-        {/* Show count */}
-        <p className="mt-4 sm:mt-6 text-gray-500 text-center text-xs sm:text-sm md:text-base">
-          Showing {rooms.length} of our finest room
-          {rooms.length !== 1 ? "s" : ""}
-        </p>
+        {/* Show count with availability summary */}
+        <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm md:text-base">
+          <p className="text-gray-500">
+            Showing {rooms.length} room{rooms.length !== 1 ? "s" : ""}
+          </p>
+          <p className="text-gray-600 mt-1">
+            <span className="text-green-600">
+              {rooms.filter(r => r._availabilityStatus === 'available').length} available
+            </span> • 
+            <span className="text-orange-600 mx-2">
+              {rooms.filter(r => r._statusText && r._statusText.includes('Limited')).length} limited
+            </span> • 
+            <span className="text-red-600">
+              {rooms.filter(r => r._availabilityStatus === 'fully_booked').length} fully booked
+            </span>
+          </p>
+        </div>
       </div>
 
       {/* Room Details Modal */}
@@ -600,6 +681,11 @@ const handleBookNow = (room) => {
                   -{getRoomProperty(selectedRoom, "roomDiscount")}% OFF
                 </div>
               )}
+
+              {/* Availability Badge */}
+              <div className={`absolute top-2 sm:top-4 right-12 sm:right-16 px-3 py-1.5 rounded-lg font-medium text-xs sm:text-sm ${getAvailabilityBadgeClass(selectedRoom)}`}>
+                {getAvailabilityText(selectedRoom)}
+              </div>
             </div>
 
             {/* Modal Content */}
@@ -633,6 +719,67 @@ const handleBookNow = (room) => {
                   )}
                 </div>
               </div>
+
+              {/* Availability Details */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-semibold mb-2 text-gray-700">Availability Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-gray-600">Total Rooms:</p>
+                    <p className="font-semibold">{getRoomProperty(selectedRoom, "roomQuantity", 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Available Now:</p>
+                    <p className="font-semibold">{getRoomProperty(selectedRoom, "availableRooms", 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Status:</p>
+                    <p className={`font-semibold ${getAvailabilityBadgeClass(selectedRoom)} px-2 py-1 rounded inline-block`}>
+                      {getAvailabilityText(selectedRoom)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Can Book:</p>
+                    <p className={`font-semibold ${isRoomAvailable(selectedRoom) ? 'text-green-600' : 'text-red-600'}`}>
+                      {isRoomAvailable(selectedRoom) ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Limited Availability Warning */}
+              {selectedRoom._statusText && selectedRoom._statusText.includes('Limited') && (
+                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-orange-700 text-sm">
+                        Limited Availability
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Only {getRoomProperty(selectedRoom, "availableRooms", 0)} room(s) left. Book now to secure your stay!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fully Booked Warning */}
+              {!isRoomAvailable(selectedRoom) && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-red-700 text-sm">
+                        Not Available for Booking
+                      </p>
+                      <p className="text-red-600 text-xs mt-1">
+                        This room is currently fully booked. Please select another room.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Room Description */}
               <div className="mb-4 sm:mb-6">
@@ -684,48 +831,10 @@ const handleBookNow = (room) => {
                 </div>
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-center">
                   <FaUsers className="h-5 w-5 sm:h-6 sm:w-6 text-[#c1bd3f] mx-auto mb-2" />
-                  {/* <p className="font-semibold text-sm sm:text-base">
-                    {getRoomProperty(selectedRoom, "roomQuantity", 0)} Available
-                  </p> */}
-                  <p className="text-xs sm:text-sm text-gray-500">{getRoomProperty(selectedRoom, 'availableRooms', 0)} Available</p>
+                  <p className="font-semibold text-sm sm:text-base">
+                    {getRoomProperty(selectedRoom, "availableRooms", 0)} Available
+                  </p>
                   <p className="text-xs sm:text-sm text-gray-500">Units left</p>
-                </div>
-              </div>
-
-              {/* Amenities/Features */}
-              <div className="mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-gray-800">
-                  Room Amenities
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Free WiFi</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">
-                      Air Conditioning
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Flat Screen TV</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Mini Bar</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">Room Service</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm sm:text-base">
-                      Safe Deposit Box
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -739,20 +848,27 @@ const handleBookNow = (room) => {
                 </button>
                 <button
                   onClick={() => handleBookNow(selectedRoom)}
-                disabled={
-  getRoomProperty(selectedRoom, "availableRooms", 0) <= 0
-}
+                  disabled={!isRoomAvailable(selectedRoom)}
                   className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-  getRoomProperty(selectedRoom, "availableRooms", 0) > 0
-    ? "bg-[#c1bd3f] hover:bg-[#a8a535] text-white"
-    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-}`}
->
-{getRoomProperty(selectedRoom, "availableRooms", 0) > 0
-  ? "Book Now"
-  : "Sold Out"}
-</button>
+                    isRoomAvailable(selectedRoom)
+                      ? "bg-[#c1bd3f] hover:bg-[#a8a535] text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isRoomAvailable(selectedRoom)
+                    ? "Login to Book Now"
+                    : "Fully Booked"}
+                </button>
               </div>
+
+              {/* Login Notice */}
+              {isRoomAvailable(selectedRoom) && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-blue-700 text-xs sm:text-sm text-center">
+                    <strong>Note:</strong> You must be logged in as a customer to book this room.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

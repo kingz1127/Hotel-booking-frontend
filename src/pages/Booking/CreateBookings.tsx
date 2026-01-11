@@ -147,7 +147,7 @@ export default function CreateBookings() {
       // Try to parse error message
       let errorMessage = "Booking failed";
       try {
-        const errorObj = JSON.parse(responseText);
+        const errorObj = JSON.parse(responseText); 
         errorMessage = errorObj.message || errorMessage;
       } catch {
         errorMessage = responseText || errorMessage;

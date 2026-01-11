@@ -94,13 +94,13 @@ export default function AddRoom({ onRoomAdded }) {
   const handleImageUpload = (file) => {
     if (!file) return false;
 
-    // Validate file type
+    
     if (!file.type.startsWith('image/')) {
       toast.error("Please upload an image file (JPEG, PNG, etc.)");
       return false;
     }
 
-    // Validate size (5MB max)
+    
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image size must be less than 5MB");
       return false;
@@ -119,7 +119,7 @@ export default function AddRoom({ onRoomAdded }) {
  async function onSubmit(data) {
   setIsLoading(true);
 
-  // Prepare room data (excluding image)
+  
   const roomData = {
     roomName: data.roomName,
     roomDescription: data.roomDescription,
@@ -132,14 +132,14 @@ export default function AddRoom({ onRoomAdded }) {
     roomBaths: data.roomBaths,
   };
 
-  console.log("Room data:", roomData);
+  
 
   try {
     let imageFile = null;
     
-    // Convert base64 to File if image is provided
+    
     if (data.roomImage && data.roomImage.startsWith('data:image/')) {
-      // Convert base64 to blob
+      
       const base64Response = await fetch(data.roomImage);
       const blob = await base64Response.blob();
       imageFile = new File([blob], 'room-image.jpg', { type: 'image/jpeg' });
@@ -157,7 +157,7 @@ export default function AddRoom({ onRoomAdded }) {
       setImagePreview(null);
       setOpen(false);
 
-      // Notify parent to refresh table
+     
       if (onRoomAdded) onRoomAdded(result);
     } else {
       toast.error("Room creation incomplete");
@@ -170,7 +170,7 @@ export default function AddRoom({ onRoomAdded }) {
   }
 }
 
-  // Optional image compression function
+ 
   const compressImageIfNeeded = async (base64Image, maxWidth = 1200) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -180,7 +180,7 @@ export default function AddRoom({ onRoomAdded }) {
         let width = img.width;
         let height = img.height;
         
-        // Resize if too large
+        
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
@@ -191,7 +191,7 @@ export default function AddRoom({ onRoomAdded }) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Compress to JPEG with 0.8 quality
+        
         const compressed = canvas.toDataURL('image/jpeg', 0.8);
         resolve(compressed);
       };
@@ -238,13 +238,13 @@ export default function AddRoom({ onRoomAdded }) {
 
       {open && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          {/* Backdrop */}
+          
           <div 
             className="fixed inset-0 bg-black/50 transition-opacity"
             onClick={handleClose}
           />
           
-          {/* Modal */}
+          
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative bg-white rounded-2xl w-full max-w-2xl shadow-2xl transform transition-all">
               {/* Header */}
@@ -266,12 +266,12 @@ export default function AddRoom({ onRoomAdded }) {
                 </div>
               </div>
 
-              {/* Form */}
+              
               <div className="p-6 max-h-[70vh] overflow-y-auto">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Room Name */}
+                      
                       <FormField
                         control={form.control}
                         name="roomName"
@@ -291,7 +291,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Category */}
+                      
                       <FormField
                         control={form.control}
                         name="roomCategory"
@@ -317,7 +317,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Price */}
+                      
                       <FormField
                         control={form.control}
                         name="roomPrice"
@@ -346,7 +346,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Discount */}
+                      
                       <FormField
                         control={form.control}
                         name="roomDiscount"
@@ -375,7 +375,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Quantity */}
+                      
                       <FormField
                         control={form.control}
                         name="roomQuantity"
@@ -398,7 +398,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Measurements */}
+                      
                       <FormField
                         control={form.control}
                         name="roomMeasurements"
@@ -421,7 +421,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Beds */}
+                      
                       <FormField
                         control={form.control}
                         name="roomBeds"
@@ -444,7 +444,7 @@ export default function AddRoom({ onRoomAdded }) {
                         )}
                       />
 
-                      {/* Baths */}
+                      
                       <FormField
                         control={form.control}
                         name="roomBaths"
@@ -468,7 +468,7 @@ export default function AddRoom({ onRoomAdded }) {
                       />
                     </div>
 
-                    {/* Description */}
+                    
                     <FormField
                       control={form.control}
                       name="roomDescription"
@@ -494,7 +494,7 @@ export default function AddRoom({ onRoomAdded }) {
                       )}
                     />
 
-                    {/* Image Upload */}
+                   
                     <FormField
                       control={form.control}
                       name="roomImage"
@@ -574,7 +574,7 @@ export default function AddRoom({ onRoomAdded }) {
                 </Form>
               </div>
 
-              {/* Footer */}
+             
               <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 rounded-b-2xl">
                 <div className="flex justify-end space-x-3">
                   <button

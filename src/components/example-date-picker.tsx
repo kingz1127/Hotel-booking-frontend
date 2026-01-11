@@ -291,7 +291,7 @@ export function EndDatePicker({
   )
 }
 
-// Simple single date picker that disables past dates (your original but enhanced)
+
 export function DatePickerDemoEnhanced() {
   const [date, setDate] = React.useState<Date>()
 

@@ -12,7 +12,7 @@ export default function CheckIns() {
   return (
     <>
       <div className="
-        /* Base/Mobile styles (default - up to 639px) */
+        
         
          
         flex flex-col items-center justify-center
@@ -37,7 +37,7 @@ export default function CheckIns() {
         
         
         
-        /* Medium screens (768px - 1023px) */
+        
         md:w-[85vw]
         md:max-w-[750px]
         md:gap-4
@@ -46,8 +46,6 @@ export default function CheckIns() {
         md:pb-12
         
        
-        
-        /* Large screens (1024px - 1279px) */
         lg:flex
          lg:flex-row
         lg:items-center
@@ -63,7 +61,7 @@ export default function CheckIns() {
        
         
         
-        /* Extra large screens (1280px - 1535px) */
+        
         xl:max-w-[1200px]
         xl:gap-6
         
@@ -73,7 +71,7 @@ export default function CheckIns() {
         2xl:gap-10
       ">
         
-        {/* Check In Section */}
+        
         <div className="
           /* Mobile: Full width, stacked */
           flex flex-col justify-center
@@ -119,7 +117,7 @@ export default function CheckIns() {
           </div>
         </div>
 
-        {/* Check Out Section */}
+       
         <div className="
           /* Mobile: Full width, stacked */
           flex flex-col justify-center
@@ -182,14 +180,7 @@ export default function CheckIns() {
           /* Extra large+: More width */
           xl:max-w-[250px]
         ">
-          {/* <div className="
-            text-xs sm:text-sm md:text-base
-            font-medium text-gray-700
-            mb-1
-            hidden sm:block
-          ">
-            <p>Guests & Rooms</p>
-          </div> */}
+          
           <div className="
             text-xs sm:text-sm md:text-base
             font-medium text-gray-700
@@ -209,7 +200,7 @@ export default function CheckIns() {
           </div>
         </div>
 
-        {/* Check Availability Button */}
+        
         <div className="
           /* Mobile: Full width, centered */
           flex flex-col justify-center

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import {
@@ -9,8 +10,6 @@ import {
   ChevronRight,
   Home,
 } from "lucide-react";
-import { getAllRooms } from "../../services/api.room.js";
-import { getAllBookings } from "../../services/api.Booking.js";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function RoomStatus() {
@@ -24,21 +23,15 @@ export default function RoomStatus() {
     totalCapacity: 0,
   });
 
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const location = useLocation(); // Add this
-  
-  // ... existing state ...
-
-  // Add this effect
   useEffect(() => {
     if (location.state?.refresh) {
       fetchRoomStatus();
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchRoomStatus();
@@ -49,129 +42,91 @@ export default function RoomStatus() {
       setLoading(true);
       setError(null);
 
-      // Fetch both rooms and bookings using your API functions
-      const [roomsResult, bookingsResult] = await Promise.all([
-        getAllRooms(0, 100),
-        getAllBookings(),
+      // Fetch rooms and bookings
+      const [roomsResponse, bookingsResponse] = await Promise.all([
+        fetch("http://localhost:8080/api/v1/rooms?page=0&size=100"),
+        fetch("http://localhost:8080/api/v1/bookings?page=0&size=1000")
       ]);
 
-      // Process rooms data
-      let roomsArray = [];
-      if (Array.isArray(roomsResult)) {
-        roomsArray = roomsResult;
-      } else if (roomsResult.data && Array.isArray(roomsResult.data)) {
-        roomsArray = roomsResult.data;
-      } else if (roomsResult.rooms && Array.isArray(roomsResult.rooms)) {
-        roomsArray = roomsResult.rooms;
-      } else if (roomsResult.content && Array.isArray(roomsResult.content)) {
-        roomsArray = roomsResult.content;
+      if (!roomsResponse.ok || !bookingsResponse.ok) {
+        throw new Error("Failed to fetch data");
       }
 
-      // Process bookings data
-      let bookingsArray = [];
-      if (Array.isArray(bookingsResult)) {
-        bookingsArray = bookingsResult;
-      } else if (bookingsResult.data && Array.isArray(bookingsResult.data)) {
-        bookingsArray = bookingsResult.data;
-      } else if (
-        bookingsResult.bookings &&
-        Array.isArray(bookingsResult.bookings)
-      ) {
-        bookingsArray = bookingsResult.bookings;
-      }
+      const roomsData = await roomsResponse.json();
+      const bookingsData = await bookingsResponse.json();
 
-      // Calculate today's date for booking filtering
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Extract arrays from paginated response
+      const roomsArray = roomsData.content || roomsData;
+      const bookingsArray = bookingsData.content || bookingsData;
 
-      // Calculate room status
+      // ✅ Calculate room status using BACKEND's availableRooms field
       const roomsWithStatus = roomsArray.map((room) => {
-        const roomId = room.id || room.roomId || "unknown";
-        const totalQuantity =
-          room.roomQuantity || room.quantity || room.totalQuantity || 1;
+        const roomId = room.id;
+        
+        // ✅ CRITICAL: Use backend's availableRooms directly
+        const totalQuantity = room.roomQuantity || 1;
+        const availableNow = room.availableRooms || 0; // Direct from backend
+        const bookedCount = totalQuantity - availableNow;
+        
+        const occupancyRate = totalQuantity > 0 
+          ? ((bookedCount / totalQuantity) * 100) 
+          : 0;
 
-        // Find bookings for this room
-        const roomBookings = bookingsArray.filter((booking) => {
-          const bookingRoomId =
-            booking.roomId ||
-            booking.roomID ||
-            (booking.room && (booking.room.id || booking.room.roomId));
-          return bookingRoomId == roomId;
-        });
-
-        // Count active bookings for today
-       const activeBookings = roomBookings.filter((booking) => {
-  const status = booking.status || booking.bookingStatus;
-  const isActive =
-    status === "CONFIRMED" ||
-    status === "CHECKED_IN" ||
-    status === "ACTIVE" ||
-    status === "PENDING_PAYMENT";
-
-  if (!isActive) return false;
-
-  // Check if booking is active for today
-  const checkInDate = booking.checkInDate || booking.checkinDate || booking.startDate;
-  const checkOutDate = booking.checkOutDate || booking.checkoutDate || booking.endDate;
-
-  if (!checkInDate || !checkOutDate) return false;
-
-  const checkIn = new Date(checkInDate);
-  const checkOut = new Date(checkOutDate);
-
-  checkIn.setHours(0, 0, 0, 0);
-  checkOut.setHours(0, 0, 0, 0);
-
-  return checkIn <= today && checkOut >= today;
-});
-
-        const bookedCount = activeBookings.length;
-        const availableNow = Math.max(0, totalQuantity - bookedCount);
-        const occupancyRate =
-          totalQuantity > 0 ? (bookedCount / totalQuantity) * 100 : 0;
-
+        // Determine status based on availability
         let status = "AVAILABLE";
-        if (bookedCount === 0) {
-          status = "VACANT";
-        } else if (availableNow === 0) {
+        if (availableNow === 0) {
           status = "FULLY BOOKED";
+        } else if (availableNow === totalQuantity) {
+          status = "VACANT";
         } else if (availableNow <= totalQuantity * 0.2) {
           status = "LIMITED";
-        } else {
-          status = "AVAILABLE";
         }
+
+        console.log(`Room ${room.roomName}:`, {
+          totalQuantity,
+          availableNow,
+          bookedCount,
+          occupancyRate: occupancyRate.toFixed(1) + '%',
+          status
+        });
 
         return {
           id: roomId,
-          name: room.roomName || room.name || `Room ${roomId}`,
-          category: room.roomCategory || room.category || "Standard",
-          price: room.roomPrice || room.price || 0,
-          image: room.roomImage || room.image || null,
+          name: room.roomName || `Room ${roomId}`,
+          category: room.roomCategory || "Standard",
+          price: room.roomPrice || 0,
+          image: room.roomImage || null,
           totalQuantity,
           bookedCount,
           availableNow,
           occupancyRate: Math.round(occupancyRate),
           status,
-          activeBookingsCount: activeBookings.length,
+          isAvailable: room.isAvailable,
         };
       });
 
-      // Sort by occupancy rate (most occupied first) and take only 3 rooms
+      // Sort by occupancy rate (most occupied first) and take top 3
       const sortedRooms = roomsWithStatus
         .sort((a, b) => b.occupancyRate - a.occupancyRate)
         .slice(0, 3);
 
-      // Calculate overall statistics
+      // ✅ Calculate overall statistics using backend data
       const totalRooms = roomsWithStatus.length;
       const totalCapacity = roomsWithStatus.reduce(
-        (sum, room) => sum + room.totalQuantity,
+        (sum, room) => sum + room.totalQuantity, 
         0
       );
       const availableRooms = roomsWithStatus.reduce(
-        (sum, room) => sum + room.availableNow,
+        (sum, room) => sum + room.availableNow, 
         0
       );
       const occupiedRooms = totalCapacity - availableRooms;
+
+      console.log("=== ROOM STATUS SUMMARY ===");
+      console.log("Total room types:", totalRooms);
+      console.log("Total capacity:", totalCapacity);
+      console.log("Available rooms:", availableRooms);
+      console.log("Occupied rooms:", occupiedRooms);
 
       setStats({
         totalRooms,
@@ -184,16 +139,7 @@ export default function RoomStatus() {
     } catch (error) {
       console.error("Error fetching room status:", error);
       setError(error.message);
-
-      if (error.message.includes("401") || error.message.includes("403")) {
-        toast.error("Authentication failed. Please log in again as admin.");
-      } else if (error.message.includes("400")) {
-        toast.error("Bad request. The server rejected the request.");
-      } else if (error.message.includes("500")) {
-        toast.error("Server error. Please try again later.");
-      } else {
-        toast.error(`Failed to load room status: ${error.message}`);
-      }
+      toast.error(`Failed to load room status: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -280,7 +226,7 @@ export default function RoomStatus() {
           <div>
             <h2 className="text-lg font-semibold">Room Status</h2>
             <p className="text-sm text-gray-500">
-              Showing 3 most occupied rooms
+              Live availability from inventory system
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -308,28 +254,28 @@ export default function RoomStatus() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 border-b">
         <div className="bg-white p-3 rounded-lg border text-center">
-          <p className="text-xs text-gray-500">Total Rooms</p>
-          <p className="text-lg font-bold mt-1">{stats.totalRooms}</p>
+          <p className="text-xs text-gray-500">Room Types</p>
+          <p className="text-lg font-bold">{stats.totalRooms}</p>
         </div>
         <div className="bg-white p-3 rounded-lg border text-center">
-          <p className="text-xs text-gray-500">Total Capacity</p>
-          <p className="text-lg font-bold mt-1">{stats.totalCapacity}</p>
+          <p className="text-xs text-gray-500">Total Rooms</p>
+          <p className="text-lg font-bold">{stats.totalCapacity}</p>
         </div>
         <div className="bg-white p-3 rounded-lg border text-center">
           <p className="text-xs text-gray-500">Occupied</p>
-          <p className="text-lg font-bold mt-1 text-red-600">
+          <p className="text-lg font-bold text-red-600">
             {stats.occupiedRooms}
           </p>
         </div>
         <div className="bg-white p-3 rounded-lg border text-center">
           <p className="text-xs text-gray-500">Available</p>
-          <p className="text-lg font-bold mt-1 text-green-600">
+          <p className="text-lg font-bold text-green-600">
             {stats.availableRooms}
           </p>
         </div>
       </div>
 
-      {/* 3 Room Cards */}
+      {/* Room Cards */}
       <div className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {rooms.map((room) => (
@@ -366,14 +312,19 @@ export default function RoomStatus() {
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Quantity:</span>
-                  <span className="font-medium">
-                    {room.bookedCount}/{room.totalQuantity} booked
+                  <span className="text-gray-600">Total Rooms:</span>
+                  <span className="font-medium">{room.totalQuantity}</span>
+                </div>
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Booked:</span>
+                  <span className="font-medium text-red-600">
+                    {room.bookedCount}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Available Now:</span>
+                  <span className="text-gray-600">Available:</span>
                   <span
                     className={`font-medium ${
                       room.availableNow === 0
@@ -383,7 +334,7 @@ export default function RoomStatus() {
                         : "text-green-600"
                     }`}
                   >
-                    {room.availableNow} available
+                    {room.availableNow}
                   </span>
                 </div>
 
@@ -420,7 +371,6 @@ export default function RoomStatus() {
           ))}
         </div>
 
-        {/* No rooms message */}
         {rooms.length === 0 && (
           <div className="text-center py-8">
             <Home className="h-12 w-12 text-gray-300 mx-auto mb-3" />
